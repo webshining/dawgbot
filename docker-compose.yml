@@ -1,0 +1,11 @@
+services:
+  telegram:
+    build: ./telegram
+    environment:
+      - ENV=prod
+    volumes:
+      - ./database:/app/database
+      - ./config.py:/app/config.py
+      - ./locales:/app/locales
+      - ./.env:/app/.env
+    restart: on-failure
