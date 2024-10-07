@@ -1,11 +1,83 @@
+x-dbenv: &dbenv
+  SURREAL_URL: ${SURREAL_URL:-ws://surrealdb:8000/rpc}
+  SURREAL_NS: ${SURREAL_NS:-bot}
+  SURREAL_DB: ${SURREAL_DB:-bot}
+  SURREAL_USER: ${SURREAL_USER:?}
+  SURREAL_PASS: ${SURREAL_PASS:?}
+
+x-rabbitenv: &rabbitenv
+  RABBIT_HOST: ${RABBIT_HOST:-rabbitmq}
+  RABBIT_PORT: ${RABBIT_PORT:-5672}
+  RABBIT_USER: ${RABBIT_USER:?}
+  RABBIT_PASS: ${RABBIT_PASS:?}
+
+x-dsenv: &dsenv
+  DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:?}
+  TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:?}
+
+  <<: [*dbenv, *rabbitenv]
+
+x-tgenv: &tgenv
+  TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?}
+
+  <<: [*dbenv, *rabbitenv]
+
 services:
   telegram:
     build: ./telegram
+    depends_on:
+      - surrealdb
+      - rabbitmq
     environment:
-      - ENV=prod
+      ENV: prod
+      <<: *tgenv
     volumes:
       - ./database:/app/database
       - ./config.py:/app/config.py
       - ./locales:/app/locales
       - ./.env:/app/.env
+      - ./rabbit.py:/app/rabbit.py
     restart: on-failure
+  discord:
+    build: ./discord
+    depends_on:
+      - surrealdb
+      - rabbitmq
+    environment:
+      ENV: prod
+      <<: *dsenv
+    volumes:
+      - ./database:/app/database
+      - ./config.py:/app/config.py
+      - ./locales:/app/locales
+      - ./.env:/app/.env
+      - ./rabbit.py:/app/rabbit.py
+    restart: on-failure
+  surrealdb:
+    image: surrealdb/surrealdb:latest
+    user: root
+    entrypoint:
+      - /surreal
+      - start
+      - --user
+      - ${SURREAL_USER:?}
+      - --pass
+      - ${SURREAL_PASS:?}
+      - rocksdb:/mydata
+    volumes:
+      - surrealdata:/mydata
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+  rabbitmq:
+    image: rabbitmq:3-management
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBIT_USER:?}
+      RABBITMQ_DEFAULT_PASS: ${RABBIT_PASS:?}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    restart: unless-stopped
+
+volumes:
+  surrealdata:

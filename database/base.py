@@ -49,54 +49,49 @@ class Base(BaseModel, metaclass=BaseMeta):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     @execute
-    async def get(cls, id: str | int, session=None, **kwargs):
-        obj = await session.select(f"{cls._table}:{id}")
-        return cls(**obj) if obj else None
+    async def get(cls, id: str | int = None, session=None, **kwargs):
+        id = f"{cls._table}:{id}" if id else cls._table
+        result = await session.select(id)
+        if result is list:
+            return [cls(**o) for o in result]
+        return cls(**result) if result else None
 
     @execute
     async def get_by(cls, params: str, session=None, **kwargs):
-        obj = await session.query(f"SELECT * FROM {cls._table} WHERE {params}")
-        return cls(**obj[0]["result"][0]) if obj and obj[0]["result"] else None
-
-    @execute
-    async def get_all(cls, session=None, **kwargs):
-        objs = await session.select(cls._table)
-        return [cls(**o) for o in objs]
+        result = await session.query(f"SELECT * FROM {cls._table} WHERE {params}")
+        return [cls(**o) for o in result[0]["result"]]
 
     @execute
     async def create(cls, session=None, **kwargs):
         id = kwargs.pop("id", None)
         id = f"{cls._table}:{id}" if id else cls._table
         kwargs = cls(**kwargs).model_dump(mode="json", exclude={"id"})
-        obj = await session.create(id, kwargs)
-        return cls(**(obj[0] if isinstance(obj, list) else obj))
+        result = await session.create(id, kwargs)
+        return cls(**result)
 
     @execute
     async def update(cls, id: str, session=None, **kwargs):
-        kwargs["updated_at"] = convert_datetime_to_iso_8601_with_z_suffix(
-            datetime.now(timezone.utc)
-        )
-        await session.query(f"UPDATE {cls._table}:{id} MERGE {kwargs} WHERE id")
-        return await cls.get(id=id, session=session)
+        result = await cls.get(id=id, session=session)
+        if result:
+            await session.query(f"UPDATE {cls._table}:{id} MERGE {kwargs} WHERE id")
+            return await cls.get(id=id, session=session)
+        return None
 
     @execute
     async def delete(cls, id: str, session=None):
         await session.delete(f"{cls._table}:{id}")
-        return True
 
     @execute
     async def get_or_create(cls, id: str | int, session=None, **kwargs):
-        if obj := await cls.get(id, session=session):
-            return obj
-        else:
-            return await cls.create(id=id, session=session, **kwargs)
+        if result := await cls.get(id, session=session):
+            return result
+        return await cls.create(id=id, session=session, **kwargs)
 
     @execute
     async def update_or_create(cls, id: str | int, session=None, **kwargs):
-        if user := await cls.update(id=id, **kwargs):
+        if user := await cls.update(id=id, session=session, **kwargs):
             return user
-        else:
-            return await cls.create(id=id, session=session, **kwargs)
+        return await cls.create(id=id, session=session, **kwargs)
 
     @classmethod
     def set_collection(cls, collection: str):
