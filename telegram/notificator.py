@@ -3,9 +3,12 @@ import asyncio
 import json
 from multiprocessing import Process
 
-from loader import bot, _
+from loader import create_bot, _
 from database import User
 from rabbit import RabbitClient
+from utils import logger
+
+bot = create_bot()
 
 
 def sync(f):
@@ -30,7 +33,7 @@ async def process_message(body):
     text = _("{} joined {} in {}").format(member_link, channel_link, guild_link)
     for user in await User.get_by_notifications(guild_id):
         try:
-            await bot.send_message(user.id, text)
+            await bot.send_message(chat_id=user.id, text=text)
         except:
             pass
 
@@ -51,6 +54,8 @@ def rabbit_listener():
     rabbit_channel.basic_consume(
         queue="voice", on_message_callback=callback, auto_ack=True
     )
+
+    logger.info("Rabbit listener started")
 
     loop.run_forever()
 

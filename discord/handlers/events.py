@@ -7,6 +7,7 @@ from discord import VoiceState, Member, Guild
 from loader import bot, rabbit_connection, rabbit_channel
 from rabbit import RabbitClient
 from database import Server
+from utils import logger
 
 
 @bot.event
@@ -18,7 +19,8 @@ async def on_ready():
     rabbit_channel = rabbit_connection.channel
 
     synced = await bot.tree.sync()
-    print(f"Synced {len(synced)} commands")
+
+    logger.info(f"Discord bot started, synced {len(synced)} commands")
 
 
 @bot.event
@@ -57,9 +59,13 @@ async def on_voice_state_update(member: Member, before: VoiceState, after: Voice
             body=json.dumps(data),
         )
 
+        logger.debug(f"Sent message to RabbitMQ")
+
 
 @bot.event
 async def on_disconnect():
     global rabbit_connection
     if rabbit_connection:
         rabbit_connection.connection.close()
+
+    logger.info("Discord bot stopped")

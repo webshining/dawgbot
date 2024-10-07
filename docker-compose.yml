@@ -32,10 +32,11 @@ services:
       ENV: prod
       <<: *tgenv
     volumes:
-      - ./database:/app/database
-      - ./config.py:/app/config.py
-      - ./locales:/app/locales
       - ./.env:/app/.env
+      - ./config.py:/app/config.py
+      - ./utils:/app/utils
+      - ./database:/app/database
+      - ./locales:/app/locales
       - ./rabbit.py:/app/rabbit.py
     restart: on-failure
   discord:
@@ -47,10 +48,11 @@ services:
       ENV: prod
       <<: *dsenv
     volumes:
-      - ./database:/app/database
-      - ./config.py:/app/config.py
-      - ./locales:/app/locales
       - ./.env:/app/.env
+      - ./config.py:/app/config.py
+      - ./utils:/app/utils
+      - ./database:/app/database
+      - ./locales:/app/locales
       - ./rabbit.py:/app/rabbit.py
     restart: on-failure
   surrealdb:

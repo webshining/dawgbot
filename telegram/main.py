@@ -13,6 +13,7 @@ from middlewares import setup_middleware
 from handlers import setup_handlers
 from notificator import run_listener
 from commands import set_default_commands
+from utils import logger
 
 
 async def on_startup():
@@ -22,12 +23,16 @@ async def on_startup():
     await rabbit_connection.wait_until_ready()
     rabbit_channel = rabbit_connection.channel
 
+    logger.info("Telegram bot started")
+
     run_listener()
 
 
 async def on_shutdown():
     if rabbit_connection:
         rabbit_connection.connection.close()
+
+    logger.info("Telegram bot stopped")
 
 
 async def main():

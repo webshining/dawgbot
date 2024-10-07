@@ -7,19 +7,22 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from config import I18N_DOMAIN, I18N_PATH
 from tgconfig import TELEGRAM_BOT_TOKEN
 
-bot = Bot(
-    TELEGRAM_BOT_TOKEN,
-    default=DefaultBotProperties(
-        parse_mode=ParseMode.HTML, link_preview_is_disabled=True
-    ),
-)
+
+def create_bot():
+    return Bot(
+        TELEGRAM_BOT_TOKEN,
+        default=DefaultBotProperties(
+            parse_mode=ParseMode.HTML, link_preview_is_disabled=True
+        ),
+    )
+
+
+bot = create_bot()
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
 
-
 i18n = I18n(path=I18N_PATH, domain=I18N_DOMAIN)
 _ = i18n.gettext
-
 
 rabbit_connection = None
 rabbit_channel = None
