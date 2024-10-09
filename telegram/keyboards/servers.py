@@ -9,17 +9,12 @@ class ServersCallback(CallbackData, prefix="servers"):
     id: int
 
 
-def get_servers_markup(
-    data: str, servers: list[UserServer], notifications: bool = False
-):
+def get_servers_markup(data: str, servers: list[UserServer]):
     builder = InlineKeyboardBuilder()
 
     buttons = [
         InlineKeyboardButton(
-            text=(
-                f"{s.server.name}"
-                + ((" 🔔" if s.notifications else " 🔕") if notifications else "")
-            ),
+            text=s.server.name,
             callback_data=ServersCallback(data=data, id=s.server.id).pack(),
         )
         for s in servers

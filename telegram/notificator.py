@@ -30,10 +30,11 @@ async def process_message(body):
     channel_link = data["channel_link"]
     guild_link = data["guild_link"]
     guild_id = data["guild_id"]
+    channel_id = data["channel_id"]
     text = _("{} joined {} in {}").format(member_link, channel_link, guild_link)
-    for user in await User.get_by_notifications(guild_id):
+    for user in await User.get_by_notifications(guild_id, channel_id):
         try:
-            await bot.send_message(chat_id=user.id, text=text)
+            await bot.send_message(chat_id=user, text=text)
         except:
             pass
 

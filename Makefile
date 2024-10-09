@@ -21,3 +21,9 @@ pybabel_update:
 	pybabel update -i $(LOCALES_PATH)/$(I18N_DOMAIN).pot -d $(LOCALES_PATH) -D $(I18N_DOMAIN)
 pybabel_compile:
 	pybabel compile -d $(LOCALES_PATH) -D $(I18N_DOMAIN)
+db_export:
+	docker compose exec surrealdb //surreal export --conn http://localhost:8000 --user $(SURREAL_USER) --pass $(SURREAL_PASS) --ns $(SURREAL_NS) --db $(SURREAL_DB) export.surql && \
+	docker compose cp surrealdb:/export.surql ./export.surql
+db_import:
+	docker compose cp ./export.surql surrealdb:/export.surql && \
+	docker compose exec surrealdb /surreal import --conn http://localhost:8000 --user $(SURREAL_USER) --pass $(SURREAL_PASS) --ns $(SURREAL_NS) --db $(SURREAL_DB) export.surql

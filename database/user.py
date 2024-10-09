@@ -1,73 +1,93 @@
 from pydantic import Field, BaseModel
+from datetime import datetime, timezone
 
-from .base import Base, execute
+from .base import Base, execute, T
 from .server import Server
 
 
 class UserServer(BaseModel):
     server: Server
-    notifications: bool = Field(default=True)
+    notifications: list[int] | None = Field(default=None)
 
 
 class User(Base):
     id: int
-    servers: list[UserServer] = Field(default=[])
     lang: str = Field(default="en")
+    servers: list[UserServer] = Field(default=[])
 
+    @classmethod
     @execute
-    async def get(cls, id: int = None, session=None, **kwargs):
+    async def get(cls: type[T], id: int = None, session=None) -> T | list[T] | None:
         query_id = f"{cls._table}:{id}" if id else cls._table
-        result = await session.query(f"SELECT * FROM {query_id} FETCH servers.server")
+        result = await session.query(
+            f"SELECT *, (SELECT out as server, notifications FROM ->user_server) as servers FROM {query_id} FETCH servers.server"
+        )
         result = result[0]["result"]
         if not id:
             return [cls(**o) for o in result]
         return cls(**result[0]) if result else None
 
+    @classmethod
     @execute
-    async def get_by_notifications(cls, server_id: int, session=None, **kwargs):
+    async def create(cls: type[T], session=None, **kwargs) -> T:
+        id = kwargs.pop("id", None)
+        id = f"{cls._table}:{id}" if id else cls._table
+        kwargs = cls(**kwargs).model_dump(mode="json", exclude={"id", "servers"})
+        result = await session.create(id, kwargs)
+        return cls(**result)
+
+    @classmethod
+    @execute
+    async def update(cls: type[T], id: str, session=None, **kwargs) -> T | None:
+        result = await cls.get(id=id, session=session)
+        if result:
+            kwargs = cls(**{**result.model_dump(mode="json"), **kwargs}).model_dump(
+                mode="json", exclude={"id", "servers"}
+            )
+            kwargs["updated_at"] = datetime.now(timezone.utc).isoformat()
+            await session.query(f"UPDATE {cls._table}:{id} MERGE {kwargs} RETURN AFTER")
+        return await cls.get(id=id, session=session)
+
+    @classmethod
+    @execute
+    async def get_by_notifications(
+        cls: type[T], server_id: int, channel_id: int, session=None
+    ) -> list[int]:
+        user_server = f"->user_server[WHERE out = server:{server_id}][0]"
         result = await session.query(
-            f"SELECT * FROM {cls._table} WHERE servers CONTAINS {{server: server:{server_id}, notifications: true}} FETCH servers.server"
+            f"RETURN(SELECT id FROM {cls._table} WHERE {user_server}.notifications=[] OR {channel_id} IN {user_server}.notifications).id"
         )
         result = result[0]["result"]
-        return [cls(**o) for o in result]
+        return [int(o.split(":")[1]) for o in result]
 
+    @classmethod
     @execute
-    async def add_server(cls, id: int, server_id: int, session=None, **kwargs):
-        user = await cls.get(id=id, session=session, **kwargs)
-        if not user:
-            return None
-        if not server_id in (server.server.id for server in user.servers):
-            await session.query(
-                f"UPDATE {cls._table}:{id} SET servers=array::append(servers,{{server:server:{server_id},notifications:true}})"
-            )
-        return await cls.get(id=id, session=session, **kwargs)
+    async def add_server(cls, id: int, server_id: int, session=None):
+        await session.query(
+            f"RELATE user:{id}->user_server->server:{server_id} SET notifications=[]"
+        )
+        return await cls.get(id=id, session=session)
 
+    @classmethod
     @execute
-    async def remove_server(cls, id: int, server_id: int, session=None, **kwargs):
-        user = await cls.get(id=id, session=session, **kwargs)
-        if not user:
-            return None
-        if server_id in (server.server.id for server in user.servers):
-            await session.query(
-                f"UPDATE {cls._table}:{id} SET servers=array::filter(servers, |$s| $s.server!=server:{server_id})"
-            )
-        return await cls.get(id=id, session=session, **kwargs)
+    async def remove_server(cls, id: int, server_id: int, session=None):
+        await session.query(
+            f"DELETE user:{id}->user_server WHERE out = server:{server_id}"
+        )
+        return await cls.get(id=id, session=session)
 
+    @classmethod
     @execute
     async def change_notifications(
-        cls, id: int, server_id: int, session=None, **kwargs
+        cls, id: int, server_id: int, notifications: list[int] | None, session=None
     ):
-        user = await cls.get(id=id, session=session, **kwargs)
-        if not user:
-            return None
-        server = next(
-            (server for server in user.servers if server.server.id == server_id), None
+        await session.query(
+            f"UPDATE RETURN(SELECT id FROM user_server WHERE in=user:{id} AND out=server:{server_id}).id SET notifications={notifications}"
         )
-        if server:
-            await session.query(
-                f"UPDATE {cls._table}:{id} SET servers[WHERE server = server:{server_id}].notifications = {not server.notifications};"
-            )
-        return await cls.get(id=id, session=session, **kwargs)
+        return await cls.get(id=id, session=session)
+
+    def get_server(self, server_id: int) -> UserServer | None:
+        return next((s for s in self.servers if s.server.id == server_id), None)
 
 
 User.set_collection("user")

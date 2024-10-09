@@ -1,2 +1,2 @@
 from .user import User, UserServer
-from .server import Server
+from .server import Server, ServerChannel
