@@ -63,9 +63,11 @@ class User(Base):
     @classmethod
     @execute
     async def add_server(cls, id: int, server_id: int, session=None):
-        await session.query(
-            f"RELATE user:{id}->user_server->server:{server_id} SET notifications=[]"
-        )
+        user = await cls.get(id=id, session=session)
+        if not user.get_server(server_id=server_id):
+            await session.query(
+                f"RELATE user:{id}->user_server->server:{server_id} SET notifications=[]"
+            )
         return await cls.get(id=id, session=session)
 
     @classmethod

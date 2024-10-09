@@ -6,7 +6,7 @@ from database import Server, ServerChannel
 
 @bot.event
 async def on_guild_join(guild: Guild):
-    if not await Guild.get(guild.id):
+    if not await Server.get(guild.id):
         voice_channels = [
             ServerChannel(id=channel.id, name=channel.name)
             for channel in guild.voice_channels

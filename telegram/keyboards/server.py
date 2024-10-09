@@ -23,9 +23,11 @@ def get_server_markup(
         InlineKeyboardButton(
             text=c.name
             + (
-                " 🔕"
+                " [✘]"
                 if notifications is None
-                else (" 🔔" if notifications == [] or c.id in notifications else " 🔕")
+                else (
+                    " [🗸]" if notifications == [] or c.id in notifications else " [✘]"
+                )
             ),
             callback_data=ServerCallback(
                 data=data, server_id=server_id, channel_id=c.id
@@ -37,7 +39,7 @@ def get_server_markup(
     builder.adjust(2)
     builder.row(
         InlineKeyboardButton(
-            text="Notifications" + (" 🔔" if type(notifications) is list else " 🔕"),
+            text="Notifications" + (" [🗸]" if type(notifications) is list else " [✘]"),
             callback_data=ServerCallback(
                 data=data, action="mute", server_id=server_id
             ).pack(),
