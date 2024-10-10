@@ -17,7 +17,9 @@ async def on_voice_state_update(member: Member, before: VoiceState, after: Voice
         global rabbit_connection, rabbit_channel
         member_link = f"<a href='https://discord.com/users/{member.id}'>{html.escape(member.display_name)}</a>"
         channel_link = f"<a href='https://discord.com/channels/{member.guild.id}/{after.channel.id}'>{after.channel.name}</a>"
-        guild_link = f"<a href='https://discord.com/channels/{member.guild.id}'>{member.guild.name}</a>"
+        guild_link = (
+            f"<a href='https://discord.com/channels/{member.guild.id}'>{member.guild.name}</a>"
+        )
 
         data = {
             "member_link": member_link,

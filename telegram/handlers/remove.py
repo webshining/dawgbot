@@ -19,9 +19,7 @@ async def _remove(message: Message, user: User):
 
 
 @router.callback_query(ServersCallback.filter(F.data == "remove"))
-async def _remove_callback(
-    call: CallbackQuery, callback_data: ServersCallback, user: User
-):
+async def _remove_callback(call: CallbackQuery, callback_data: ServersCallback, user: User):
     user = await User.remove_server(user.id, callback_data.id)
     await call.message.edit_text(
         _("Remove:"),

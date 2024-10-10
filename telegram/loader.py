@@ -11,9 +11,7 @@ from tgconfig import TELEGRAM_BOT_TOKEN
 def create_bot():
     return Bot(
         TELEGRAM_BOT_TOKEN,
-        default=DefaultBotProperties(
-            parse_mode=ParseMode.HTML, link_preview_is_disabled=True
-        ),
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML, link_preview_is_disabled=True),
     )
 
 

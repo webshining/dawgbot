@@ -2,6 +2,7 @@ from aiogram.filters.callback_data import CallbackData
 from aiogram.utils.keyboard import InlineKeyboardBuilder, InlineKeyboardButton
 
 from database import ServerChannel
+from loader import _
 
 
 class ServerCallback(CallbackData, prefix="server"):
@@ -25,13 +26,9 @@ def get_server_markup(
             + (
                 " [✘]"
                 if notifications is None
-                else (
-                    " [🗸]" if notifications == [] or c.id in notifications else " [✘]"
-                )
+                else (" [🗸]" if notifications == [] or c.id in notifications else " [✘]")
             ),
-            callback_data=ServerCallback(
-                data=data, server_id=server_id, channel_id=c.id
-            ).pack(),
+            callback_data=ServerCallback(data=data, server_id=server_id, channel_id=c.id).pack(),
         )
         for c in channels
     ]
@@ -39,15 +36,13 @@ def get_server_markup(
     builder.adjust(2)
     builder.row(
         InlineKeyboardButton(
-            text="Notifications" + (" [🗸]" if type(notifications) is list else " [✘]"),
-            callback_data=ServerCallback(
-                data=data, action="mute", server_id=server_id
-            ).pack(),
+            text=_("Notifications") + (" [🗸]" if type(notifications) is list else " [✘]"),
+            callback_data=ServerCallback(data=data, action="mute", server_id=server_id).pack(),
         )
     )
     builder.row(
         InlineKeyboardButton(
-            text="Back", callback_data=ServerCallback(data=data, action="back").pack()
+            text=_("Back"), callback_data=ServerCallback(data=data, action="back").pack()
         )
     )
 

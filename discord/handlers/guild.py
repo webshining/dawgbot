@@ -8,8 +8,7 @@ from database import Server, ServerChannel
 async def on_guild_join(guild: Guild):
     if not await Server.get(guild.id):
         voice_channels = [
-            ServerChannel(id=channel.id, name=channel.name)
-            for channel in guild.voice_channels
+            ServerChannel(id=channel.id, name=channel.name) for channel in guild.voice_channels
         ]
         await Server.create(id=guild.id, name=guild.name, channels=voice_channels)
 

@@ -28,9 +28,7 @@ class UserMiddleware(BaseMiddleware):
         user = (
             user
             if user
-            else await User.create(
-                id=message.from_user.id, lang=message.from_user.language_code
-            )
+            else await User.create(id=message.from_user.id, lang=message.from_user.language_code)
         )
         data["user"] = user
 
@@ -41,9 +39,7 @@ class UserMiddleware(BaseMiddleware):
         user = (
             user
             if user
-            else await User.create(
-                id=call.from_user.id, lang=call.from_user.language_code
-            )
+            else await User.create(id=call.from_user.id, lang=call.from_user.language_code)
         )
         data["user"] = user
 
@@ -53,8 +49,6 @@ class UserMiddleware(BaseMiddleware):
         user = (
             user
             if user
-            else await User.create(
-                id=query.from_user.id, lang=query.from_user.language_code
-            )
+            else await User.create(id=query.from_user.id, lang=query.from_user.language_code)
         )
         data["user"] = user

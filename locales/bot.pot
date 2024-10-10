@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2024-10-07 02:54+0300\n"
+"POT-Creation-Date: 2024-10-10 16:17+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,7 +17,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.16.0\n"
 
-#: telegram/notificator.py:30
+#: telegram/notificator.py:34
 msgid "{} joined {} in {}"
 msgstr ""
 
@@ -33,7 +33,7 @@ msgstr ""
 msgid "Enable or disable notifications"
 msgstr ""
 
-#: telegram/handlers/notifications.py:16 telegram/handlers/notifications.py:27
+#: telegram/handlers/notifications.py:21
 msgid "Notifications:"
 msgstr ""
 
@@ -45,11 +45,19 @@ msgstr ""
 msgid "Successfully subscribed to guid notifications!"
 msgstr ""
 
-#: telegram/handlers/remove.py:16 telegram/handlers/remove.py:27
+#: telegram/handlers/remove.py:16 telegram/handlers/remove.py:25
 msgid "Remove:"
 msgstr ""
 
 #: telegram/handlers/start.py:15
 msgid "Hello <b>{}</b>"
+msgstr ""
+
+#: telegram/keyboards/server.py:39
+msgid "Notifications"
+msgstr ""
+
+#: telegram/keyboards/server.py:45
+msgid "Back"
 msgstr ""
 

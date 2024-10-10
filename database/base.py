@@ -41,7 +41,7 @@ class Base(BaseModel, metaclass=BaseMeta):
     @classmethod
     @execute
     async def get(
-        cls: type[T], id: str | int = None, session=None
+        cls: type[T], id: str | int = None, session: Surreal = None
     ) -> T | list[T] | None:
         id = f"{cls._table}:{id}" if id else cls._table
         result = await session.select(id)
@@ -51,13 +51,13 @@ class Base(BaseModel, metaclass=BaseMeta):
 
     @classmethod
     @execute
-    async def get_by(cls: type[T], params: str, session=None) -> list[T]:
+    async def get_by(cls: type[T], params: str, session: Surreal = None) -> list[T]:
         result = await session.query(f"SELECT * FROM {cls._table} WHERE {params}")
         return [cls(**o) for o in result[0]["result"]]
 
     @classmethod
     @execute
-    async def create(cls: type[T], session=None, **kwargs) -> T:
+    async def create(cls: type[T], session: Surreal = None, **kwargs) -> T:
         id = kwargs.pop("id", None)
         id = f"{cls._table}:{id}" if id else cls._table
         kwargs = cls(**kwargs).model_dump(mode="json", exclude={"id"})
@@ -66,39 +66,32 @@ class Base(BaseModel, metaclass=BaseMeta):
 
     @classmethod
     @execute
-    async def update(cls: type[T], id: str, session=None, **kwargs) -> T | None:
-        result = await cls.get(id=id, session=session)
-        if result:
-            kwargs = cls(**{**result.model_dump(mode="json"), **kwargs}).model_dump(
-                mode="json"
-            )
+    async def update(cls: type[T], id: str, session: Surreal = None, **kwargs) -> T | None:
+        if result := await cls.get(id=id, session=session):
+            kwargs = cls(**(result.model_dump(mode="json") | kwargs)).model_dump(mode="json")
             del kwargs["id"]
             kwargs["updated_at"] = datetime.now(timezone.utc).isoformat()
-            result = await session.query(
-                f"UPDATE {cls._table}:{id} MERGE {kwargs} RETURN AFTER"
-            )
+            result = await session.query(f"UPDATE {cls._table}:{id} MERGE {kwargs} RETURN AFTER")
             result = cls(**result[0]["result"][0])
-        return result
+        return None
 
     @classmethod
     @execute
-    async def delete(cls: type[T], id: str, session=None) -> None:
+    async def delete(cls: type[T], id: str, session: Surreal = None) -> None:
         await session.delete(f"{cls._table}:{id}")
 
     @classmethod
     @execute
-    async def get_or_create(cls: type[T], id: str | int, session=None, **kwargs) -> T:
+    async def get_or_create(cls: type[T], id: str | int, session: Surreal = None, **kwargs) -> T:
         if result := await cls.get(id, session=session):
             return result
         return await cls.create(id=id, session=session, **kwargs)
 
     @classmethod
     @execute
-    async def update_or_create(
-        cls: type[T], id: str | int, session=None, **kwargs
-    ) -> T:
-        if user := await cls.update(id=id, session=session, **kwargs):
-            return user
+    async def update_or_create(cls: type[T], id: str | int, session: Surreal = None, **kwargs) -> T:
+        if result := await cls.update(id=id, session=session, **kwargs):
+            return result
         return await cls.create(id=id, session=session, **kwargs)
 
     @classmethod

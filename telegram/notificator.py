@@ -52,9 +52,7 @@ def rabbit_listener():
     rabbit_channel = rabbit_connection.channel
 
     rabbit_channel.queue_declare(queue="voice")
-    rabbit_channel.basic_consume(
-        queue="voice", on_message_callback=callback, auto_ack=True
-    )
+    rabbit_channel.basic_consume(queue="voice", on_message_callback=callback, auto_ack=True)
 
     logger.info("Rabbit listener started")
 

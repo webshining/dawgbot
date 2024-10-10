@@ -24,9 +24,7 @@ async def _notifications(message: Message, user: User):
 
 
 @router.callback_query(ServersCallback.filter(F.data == "notifications"))
-async def _notifications_callback(
-    call: CallbackQuery, callback_data: ServersCallback, user: User
-):
+async def _notifications_callback(call: CallbackQuery, callback_data: ServersCallback, user: User):
     server = next((s for s in user.servers if s.server.id == callback_data.id), None)
     if server:
         await call.message.edit_reply_markup(
