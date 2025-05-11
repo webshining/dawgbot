@@ -1,0 +1,22 @@
+services:
+    telegram:
+        build: .
+        command: /app/telegram
+        restart: unless-stopped
+        networks:
+            - services
+            - storage
+
+    discord:
+        build: .
+        command: /app/discord
+        restart: unless-stopped
+        networks:
+            - services
+            - storage
+
+networks:
+    services:
+        external: true
+    storage:
+        external: true

@@ -8,26 +8,31 @@ import (
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/webshining/internal/common/database"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 type Notifier struct {
-	AMQP *amqp.Channel
-	Bot  *gotgbot.Bot
-	DB   *gorm.DB
+	AMQP   *amqp.Channel
+	Bot    *gotgbot.Bot
+	DB     *gorm.DB
+	Logger *zap.Logger
 }
 
 type VoiceJoinMessage struct {
-	Username string `json:"username"`
-	Channel  string `json:"channel"`
-	Guild    string `json:"guild"`
+	Username    string `json:"username"`
+	Channel     string `json:"channel"`
+	ChannelName string `json:"channel_name"`
+	Guild       string `json:"guild"`
+	GuildName   string `json:"guild_name"`
 }
 
-func New(amqp *amqp.Channel, bot *gotgbot.Bot, db *gorm.DB) *Notifier {
+func New(amqp *amqp.Channel, bot *gotgbot.Bot, db *gorm.DB, logger *zap.Logger) *Notifier {
 	return &Notifier{
-		AMQP: amqp,
-		Bot:  bot,
-		DB:   db,
+		AMQP:   amqp,
+		Bot:    bot,
+		DB:     db,
+		Logger: logger,
 	}
 }
 
@@ -53,14 +58,14 @@ func (n *Notifier) Start() error {
 				continue
 			}
 
-			var users []*database.User
-			n.DB.Find(&users)
-			for _, user := range users {
-				n.Bot.SendMessage(user.ID, fmt.Sprintf("Пользователь %s присоединился к каналу %s на сервере %s", msg.Username, msg.Channel, msg.Guild), nil)
+			var channel *database.Channel
+			n.DB.Preload("Users").First(&channel, "id = ?", msg.Channel)
+			for _, user := range channel.Users {
+				n.Bot.SendMessage(user.ID, fmt.Sprintf("Пользователь **%s** присоединился к каналу **%s** на сервере **%s**", msg.Username, msg.ChannelName, msg.GuildName), &gotgbot.SendMessageOpts{ParseMode: "MarkdownV2"})
 			}
 		}
 	}()
 
-	log.Println(" [*] Консьюмер voice запущен и слушает очередь.")
+	n.Logger.Info("Notifier started")
 	return nil
 }

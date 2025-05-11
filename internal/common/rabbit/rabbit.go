@@ -2,8 +2,8 @@ package rabbit
 
 import amqp "github.com/rabbitmq/amqp091-go"
 
-func New() (*amqp.Connection, *amqp.Channel, error) {
-	amqp_conn, err := amqp.Dial("amqp://admin_user:admin_pass@localhost:5672/")
+func New(url string) (*amqp.Connection, *amqp.Channel, error) {
+	amqp_conn, err := amqp.Dial(url)
 	if err != nil {
 		return nil, nil, err
 	}

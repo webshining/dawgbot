@@ -1,12 +1,12 @@
 package database
 
 import (
-	"gorm.io/driver/sqlite"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-func New() (*gorm.DB, error) {
-	db, err := gorm.Open(sqlite.Open("database.sqlite3"), &gorm.Config{})
+func New(dns string) (*gorm.DB, error) {
+	db, err := gorm.Open(postgres.Open(dns), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}

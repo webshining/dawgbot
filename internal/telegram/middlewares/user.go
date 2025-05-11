@@ -13,9 +13,7 @@ func (m *Middlewares) UserMiddleware(_ *gotgbot.Bot, ctx *ext.Context) error {
 	}
 
 	var dbUser database.User
-	if err := m.DB.Preload("Guilds").Preload("Channels").Preload("Guilds.Channels").First(&dbUser, "id = ?", user.Id).Error; err != nil {
-		m.DB.Create(&database.User{ID: user.Id})
-	}
+	m.DB.Preload("Guilds").Preload("Channels").FirstOrCreate(&dbUser, database.User{ID: user.Id})
 
 	ctx.Data["user"] = &dbUser
 
