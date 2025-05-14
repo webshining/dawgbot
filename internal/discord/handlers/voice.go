@@ -14,6 +14,7 @@ type VoiceJoinMessage struct {
 	ChannelName string `json:"channel_name"`
 	Guild       string `json:"guild"`
 	GuildName   string `json:"guild_name"`
+	Image       string `json:"image"`
 }
 
 func (h *Handlers) VoiceJoinHandler(s *discordgo.Session, vs *discordgo.VoiceStateUpdate) {
@@ -45,11 +46,12 @@ func (h *Handlers) VoiceJoinHandler(s *discordgo.Session, vs *discordgo.VoiceSta
 	}
 
 	message := VoiceJoinMessage{
-		Username:    user.Username,
+		Username:    user.GlobalName,
 		Channel:     channel.ID,
 		ChannelName: channel.Name,
 		Guild:       guild.ID,
 		GuildName:   guild.Name,
+		Image:       guild.IconURL("1024"),
 	}
 
 	messageJSON, err := json.Marshal(message)

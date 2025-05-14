@@ -1,15 +1,17 @@
 services:
     telegram:
-        build: .
-        command: /app/telegram
+        build:
+            context: .
+            dockerfile: Dockerfile.telegram
         restart: unless-stopped
         networks:
             - services
             - storage
 
     discord:
-        build: .
-        command: /app/discord
+        build:
+            context: .
+            dockerfile: Dockerfile.discord
         restart: unless-stopped
         networks:
             - services

@@ -1,0 +1,86 @@
+package discord
+
+import (
+	"fmt"
+	"os"
+	"os/signal"
+
+	"github.com/bwmarrin/discordgo"
+	"github.com/joho/godotenv"
+	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/webshining/internal/common/database"
+	"github.com/webshining/internal/common/rabbit"
+	"github.com/webshining/internal/discord/handlers"
+	"go.uber.org/zap"
+	"gorm.io/gorm"
+)
+
+var (
+	bot       *discordgo.Session
+	db        *gorm.DB
+	amqp_conn *amqp.Connection
+	amqp_ch   *amqp.Channel
+	logger    *zap.Logger
+)
+
+func New() {
+	var err error
+
+	// load .env file
+	godotenv.Load()
+
+	// setup new logger
+	logger, _ = zap.NewDevelopment()
+
+	// setup new database connection
+	db, err = database.New(fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC", os.Getenv("DB_HOST"), os.Getenv("DB_USER"), os.Getenv("DB_PASS"), os.Getenv("DB_NAME"), os.Getenv("DB_PORT")))
+	if err != nil {
+		logger.Error("error connecting to database", zap.Error(err))
+		return
+	}
+
+	// setup new rabbit connection
+	amqp_conn, amqp_ch, err = rabbit.New(fmt.Sprintf("amqp://%s:%s@%s:%s/", os.Getenv("RB_USER"), os.Getenv("RB_PASS"), os.Getenv("RB_HOST"), os.Getenv("RB_PORT")))
+	if err != nil {
+		logger.Error("error connecting to rabbit", zap.Error(err))
+		return
+	}
+
+	// setup new bot session
+	bot, err = discordgo.New("Bot " + os.Getenv("DISCORD_BOT_TOKEN"))
+	if err != nil {
+		logger.Error("error creating bot session", zap.Error(err))
+		return
+	}
+
+	// setup bot handlers
+	bot.Identify.Intents = discordgo.IntentsGuildVoiceStates | discordgo.IntentsGuilds
+	handlers := handlers.New(db, amqp_ch, logger)
+	// voice handlers
+	bot.AddHandler(handlers.VoiceJoinHandler)
+	// guild handlers
+	bot.AddHandler(handlers.GuildAddHandler)
+	bot.AddHandler(handlers.GuildUpdateHandler)
+	bot.AddHandler(handlers.GuildDeleteHandler)
+	// channel handlers
+	bot.AddHandler(handlers.ChannelAddHandler)
+	bot.AddHandler(handlers.ChannelUpdateHandler)
+	bot.AddHandler(handlers.ChannelDeleteHandler)
+}
+
+func Run() {
+	defer bot.Close()
+	defer amqp_ch.Close()
+	defer amqp_conn.Close()
+	defer logger.Sync()
+
+	if err := bot.Open(); err != nil {
+		logger.Error("error opening connection to Discord", zap.Error(err))
+		return
+	}
+
+	logger.Info("Bot is now running. Press CTRL+C to exit.")
+	sc := make(chan os.Signal, 1)
+	signal.Notify(sc, os.Interrupt)
+	<-sc
+}

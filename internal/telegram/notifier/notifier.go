@@ -3,6 +3,7 @@ package notifier
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"log"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
@@ -25,6 +26,7 @@ type VoiceJoinMessage struct {
 	ChannelName string `json:"channel_name"`
 	Guild       string `json:"guild"`
 	GuildName   string `json:"guild_name"`
+	Image       string `json:"image"`
 }
 
 func New(amqp *amqp.Channel, bot *gotgbot.Bot, db *gorm.DB, logger *zap.Logger) *Notifier {
@@ -61,7 +63,23 @@ func (n *Notifier) Start() error {
 			var channel *database.Channel
 			n.DB.Preload("Users").First(&channel, "id = ?", msg.Channel)
 			for _, user := range channel.Users {
-				n.Bot.SendMessage(user.ID, fmt.Sprintf("Пользователь **%s** присоединился к каналу **%s** на сервере **%s**", msg.Username, msg.ChannelName, msg.GuildName), &gotgbot.SendMessageOpts{ParseMode: "MarkdownV2"})
+				text := fmt.Sprintf("<code>[</code> <b>%s</b> <code>]</code> — <code>[</code> <b>%s</b> <code>]</code> — <code>[</code> <b>%s</b> <code>]</code>",
+					html.EscapeString(msg.GuildName),
+					html.EscapeString(msg.ChannelName),
+					html.EscapeString(msg.Username),
+				)
+				if user.LastGuildID != msg.Guild {
+					user.LastGuildID = msg.Guild
+					n.DB.Save(&user)
+					n.Bot.SendPhoto(user.TelegramID, gotgbot.InputFileByURL(msg.Image), &gotgbot.SendPhotoOpts{
+						Caption:   text,
+						ParseMode: "HTML",
+					})
+				} else {
+					n.Bot.SendMessage(user.TelegramID, text, &gotgbot.SendMessageOpts{
+						ParseMode: "HTML",
+					})
+				}
 			}
 		}
 	}()
