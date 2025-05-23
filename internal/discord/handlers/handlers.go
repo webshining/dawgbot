@@ -9,9 +9,9 @@ import (
 type Handlers struct {
 	DB     *gorm.DB
 	AMQP   *amqp.Channel
-	Logger *zap.Logger
+	logger *zap.Logger
 }
 
 func New(db *gorm.DB, amqp *amqp.Channel, logger *zap.Logger) *Handlers {
-	return &Handlers{DB: db, AMQP: amqp, Logger: logger}
+	return &Handlers{DB: db, AMQP: amqp, logger: logger}
 }

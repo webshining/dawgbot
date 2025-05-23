@@ -7,9 +7,9 @@ import (
 
 type Handlers struct {
 	DB     *gorm.DB
-	Logger *zap.Logger
+	logger *zap.Logger
 }
 
 func New(db *gorm.DB, logger *zap.Logger) *Handlers {
-	return &Handlers{DB: db, Logger: logger}
+	return &Handlers{DB: db, logger: logger}
 }

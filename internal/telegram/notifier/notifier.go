@@ -17,7 +17,7 @@ type Notifier struct {
 	AMQP   *amqp.Channel
 	Bot    *gotgbot.Bot
 	DB     *gorm.DB
-	Logger *zap.Logger
+	logger *zap.Logger
 }
 
 type VoiceJoinMessage struct {
@@ -34,7 +34,7 @@ func New(amqp *amqp.Channel, bot *gotgbot.Bot, db *gorm.DB, logger *zap.Logger) 
 		AMQP:   amqp,
 		Bot:    bot,
 		DB:     db,
-		Logger: logger,
+		logger: logger,
 	}
 }
 
@@ -84,6 +84,6 @@ func (n *Notifier) Start() error {
 		}
 	}()
 
-	n.Logger.Info("Notifier started")
+	n.logger.Info("Notifier started")
 	return nil
 }

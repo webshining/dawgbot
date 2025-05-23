@@ -14,7 +14,7 @@ func (h *Handlers) StartHandler(b *gotgbot.Bot, ctx *ext.Context) error {
 
 		var dbGuild database.Guild
 		if err := h.DB.Preload("Channels").First(&dbGuild, "id = ?", args[1]).Error; err != nil {
-			h.Logger.Error("failed to get guild", zap.Error(err))
+			h.logger.Error("failed to get guild", zap.Error(err))
 			return nil
 		}
 

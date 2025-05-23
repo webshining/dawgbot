@@ -56,7 +56,7 @@ func (h *Handlers) VoiceJoinHandler(s *discordgo.Session, vs *discordgo.VoiceSta
 
 	messageJSON, err := json.Marshal(message)
 	if err != nil {
-		h.Logger.Error("failed to marshal message", zap.Error(err))
+		h.logger.Error("failed to marshal message", zap.Error(err))
 		return
 	}
 
@@ -67,6 +67,6 @@ func (h *Handlers) VoiceJoinHandler(s *discordgo.Session, vs *discordgo.VoiceSta
 		},
 	)
 	if err != nil {
-		h.Logger.Error("failed to publish message", zap.Error(err))
+		h.logger.Error("failed to publish message", zap.Error(err))
 	}
 }
