@@ -13,6 +13,6 @@ func New(dns string) (*gorm.DB, error) {
 		return nil, err
 	}
 
-	db.AutoMigrate(&Guild{}, &Channel{})
+	db.AutoMigrate(&Guild{}, &Channel{}, &User{})
 	return db, nil
 }

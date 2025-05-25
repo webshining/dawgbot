@@ -58,6 +58,16 @@ func New() *Bot {
 	}
 	dispatcher := ext.NewDispatcher(nil)
 
+	// set bot commands
+	commands := []gotgbot.BotCommand{
+		{Command: "start", Description: "Start the bot"},
+		{Command: "notify", Description: "Set channel notifications"},
+	}
+	if _, err := b.SetMyCommands(commands, nil); err != nil {
+		logger.Error("failed to set bot commands", zap.Error(err))
+		return nil
+	}
+
 	// setup bot handlers
 	middlewares := middlewares.New(db)
 	hndl := hndls.New(db, logger)

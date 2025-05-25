@@ -5,6 +5,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/webshining/internal/discord/commands/music"
+	"github.com/webshining/internal/discord/commands/notify.go"
 	"go.uber.org/zap"
 )
 
@@ -42,6 +43,10 @@ func New(session *discordgo.Session, logger *zap.Logger) *Commands {
 				Name:        "skip",
 				Description: "skip current song",
 			},
+			{
+				Name:        "notify",
+				Description: "allow notifications in telegram for this guild",
+			},
 		},
 
 		logger:         logger,
@@ -49,7 +54,12 @@ func New(session *discordgo.Session, logger *zap.Logger) *Commands {
 		handlers:       make(map[string]func(*discordgo.Session, *discordgo.InteractionCreate)),
 	}
 
+	// Initialize command handlers
 	music := music.New(session, logger)
+	notify := notify.New(session, logger)
+
+	// Register commands from different modules
+	commands.Register(notify.Commands())
 	commands.Register(music.Commands())
 
 	return commands

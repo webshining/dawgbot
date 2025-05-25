@@ -12,8 +12,9 @@ FROM alpine:latest
 
 WORKDIR /app
 
-COPY --from=builder /app/bin/discord /app/
+RUN apk add --no-cache ffmpeg
 
+COPY --from=builder /app/bin/discord /app/
 COPY .env /app/.env
 
 CMD [ "/app/discord" ]
