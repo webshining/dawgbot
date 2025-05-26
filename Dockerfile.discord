@@ -12,7 +12,7 @@ FROM alpine:latest
 
 WORKDIR /app
 
-RUN apk add --no-cache ffmpeg
+RUN apk add --no-cache ffmpeg yt-dlp
 
 COPY --from=builder /app/bin/discord /app/
 COPY .env /app/.env

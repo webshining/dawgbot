@@ -35,7 +35,11 @@ func New(session *discordgo.Session, logger *zap.Logger) *Commands {
 						Name:        "file",
 						Description: "The file to play",
 						Type:        discordgo.ApplicationCommandOptionAttachment,
-						Required:    true,
+					},
+					{
+						Name:        "youtubeurl",
+						Description: "The youtube file to play",
+						Type:        discordgo.ApplicationCommandOptionString,
 					},
 				},
 			},
