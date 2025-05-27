@@ -92,7 +92,8 @@ func (b *Bot) Run() {
 	// register commands for all guilds
 	guilds, _ := b.session.UserGuilds(100, "", "", false)
 	for _, guild := range guilds {
-		b.session.ApplicationCommandBulkOverwrite(b.session.State.User.ID, guild.ID, b.commands)
+		commands := b.commands
+		b.session.ApplicationCommandBulkOverwrite(b.session.State.User.ID, guild.ID, commands)
 	}
 
 	b.logger.Info("Bot is now running. Press CTRL+C to exit.")
