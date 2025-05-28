@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"time"
 
 	"github.com/bwmarrin/dgvoice"
 	"github.com/bwmarrin/discordgo"
@@ -57,7 +58,25 @@ func (c *Music) joinVoice(s *discordgo.Session, i *discordgo.InteractionCreate) 
 	return vc, nil
 }
 
+func (c *Music) scheduleAutoDisconnect(guildID string) {
+	if timer, exists := c.autoDisconnectTimers[guildID]; exists {
+		timer.Stop()
+	}
+
+	c.autoDisconnectTimers[guildID] = time.AfterFunc(10*time.Second, func() {
+		vc, ok := c.session.VoiceConnections[guildID]
+		if ok {
+			vc.Disconnect()
+		}
+		delete(c.autoDisconnectTimers, guildID)
+	})
+}
+
 func (c *Music) playAudioYoutube(s *discordgo.Session, i *discordgo.InteractionCreate, url string) {
+	if timer, exists := c.autoDisconnectTimers[i.GuildID]; exists {
+		timer.Stop()
+		delete(c.autoDisconnectTimers, i.GuildID)
+	}
 	if cancel, exists := c.playbackCancel[i.GuildID]; exists {
 		cancel()
 	}
@@ -71,19 +90,28 @@ func (c *Music) playAudioYoutube(s *discordgo.Session, i *discordgo.InteractionC
 	c.playbackCancel[i.GuildID] = cancel
 
 	stop := make(chan bool)
+	vc, _ := c.joinVoice(s, i)
 	go func() {
 		<-ctx.Done()
 		stop <- true
 		cancel()
 		delete(c.playbackCancel, i.GuildID)
 		os.Remove(file)
+		c.scheduleAutoDisconnect(i.GuildID)
 	}()
 
-	vc, _ := c.joinVoice(s, i)
-	go dgvoice.PlayAudioFile(vc, file, stop)
+	go func() {
+		dgvoice.PlayAudioFile(vc, file, stop)
+		cancel()
+	}()
+
 }
 
 func (c *Music) playAudio(s *discordgo.Session, i *discordgo.InteractionCreate, url string) {
+	if timer, exists := c.autoDisconnectTimers[i.GuildID]; exists {
+		timer.Stop()
+		delete(c.autoDisconnectTimers, i.GuildID)
+	}
 	if cancel, exists := c.playbackCancel[i.GuildID]; exists {
 		cancel()
 	}
@@ -100,16 +128,20 @@ func (c *Music) playAudio(s *discordgo.Session, i *discordgo.InteractionCreate, 
 	c.playbackCancel[i.GuildID] = cancel
 
 	stop := make(chan bool)
+	vc, _ := c.joinVoice(s, i)
 	go func() {
 		<-ctx.Done()
 		stop <- true
 		cancel()
 		delete(c.playbackCancel, i.GuildID)
 		os.Remove(file)
+		c.scheduleAutoDisconnect(i.GuildID)
 	}()
 
-	vc, _ := c.joinVoice(s, i)
-	go dgvoice.PlayAudioFile(vc, file, stop)
+	go func() {
+		dgvoice.PlayAudioFile(vc, file, stop)
+		cancel()
+	}()
 }
 
 func (c *Music) checkIsAudio(filename string) bool {

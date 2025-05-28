@@ -2,22 +2,25 @@ package music
 
 import (
 	"context"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
 )
 
 type Music struct {
-	session        *discordgo.Session
-	logger         *zap.Logger
-	playbackCancel map[string]context.CancelFunc
+	session              *discordgo.Session
+	logger               *zap.Logger
+	playbackCancel       map[string]context.CancelFunc
+	autoDisconnectTimers map[string]*time.Timer
 }
 
 func New(session *discordgo.Session, logger *zap.Logger) *Music {
 	return &Music{
-		session:        session,
-		logger:         logger,
-		playbackCancel: make(map[string]context.CancelFunc),
+		session:              session,
+		logger:               logger,
+		playbackCancel:       make(map[string]context.CancelFunc),
+		autoDisconnectTimers: make(map[string]*time.Timer),
 	}
 }
 
