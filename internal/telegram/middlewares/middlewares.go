@@ -1,11 +1,14 @@
 package middlewares
 
-import "gorm.io/gorm"
+import (
+	"github.com/webshining/internal/telegram/app"
+	"gorm.io/gorm"
+)
 
-type Middlewares struct {
-	DB *gorm.DB
+type middlewares struct {
+	db *gorm.DB
 }
 
-func New(db *gorm.DB) *Middlewares {
-	return &Middlewares{DB: db}
+func New(app *app.AppContext) *middlewares {
+	return &middlewares{db: app.DB}
 }

@@ -9,14 +9,15 @@ import (
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/webshining/internal/common/database"
+	"github.com/webshining/internal/telegram/app"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 type Notifier struct {
-	AMQP   *amqp.Channel
-	Bot    *gotgbot.Bot
-	DB     *gorm.DB
+	rabbit *amqp.Channel
+	bot    *gotgbot.Bot
+	db     *gorm.DB
 	logger *zap.Logger
 }
 
@@ -29,17 +30,24 @@ type VoiceJoinMessage struct {
 	Image       string `json:"image"`
 }
 
-func New(amqp *amqp.Channel, bot *gotgbot.Bot, db *gorm.DB, logger *zap.Logger) *Notifier {
-	return &Notifier{
-		AMQP:   amqp,
-		Bot:    bot,
-		DB:     db,
-		logger: logger,
+func New(app *app.AppContext) (*Notifier, error) {
+	rabbitChannel, err := app.Rabbit.Channel()
+	if err != nil {
+		return nil, err
 	}
+	if _, err = rabbitChannel.QueueDeclare("voice", true, false, false, false, nil); err != nil {
+		return nil, err
+	}
+	return &Notifier{
+		rabbit: rabbitChannel,
+		bot:    app.Bot,
+		db:     app.DB,
+		logger: app.Logger,
+	}, nil
 }
 
 func (n *Notifier) Start() error {
-	msgs, err := n.AMQP.Consume(
+	msgs, err := n.rabbit.Consume(
 		"voice",
 		"",
 		true,
@@ -61,7 +69,7 @@ func (n *Notifier) Start() error {
 			}
 
 			var channel *database.Channel
-			n.DB.Preload("Users").First(&channel, "id = ?", msg.Channel)
+			n.db.Preload("Users").First(&channel, "id = ?", msg.Channel)
 			for _, user := range channel.Users {
 				text := fmt.Sprintf("<code>[</code> <b>%s</b> <code>]</code> — <code>[</code> <b>%s</b> <code>]</code> — <code>[</code> <b>%s</b> <code>]</code>",
 					html.EscapeString(msg.GuildName),
@@ -70,13 +78,13 @@ func (n *Notifier) Start() error {
 				)
 				if user.LastGuildID != msg.Guild {
 					user.LastGuildID = msg.Guild
-					n.DB.Save(&user)
-					n.Bot.SendPhoto(user.TelegramID, gotgbot.InputFileByURL(msg.Image), &gotgbot.SendPhotoOpts{
+					n.db.Save(&user)
+					n.bot.SendPhoto(user.TelegramID, gotgbot.InputFileByURL(msg.Image), &gotgbot.SendPhotoOpts{
 						Caption:   text,
 						ParseMode: "HTML",
 					})
 				} else {
-					n.Bot.SendMessage(user.TelegramID, text, &gotgbot.SendMessageOpts{
+					n.bot.SendMessage(user.TelegramID, text, &gotgbot.SendMessageOpts{
 						ParseMode: "HTML",
 					})
 				}

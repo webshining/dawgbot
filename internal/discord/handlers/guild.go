@@ -5,9 +5,9 @@ import (
 	"github.com/webshining/internal/common/database"
 )
 
-func (h *Handlers) GuildAddHandler(s *discordgo.Session, g *discordgo.GuildCreate) {
+func (h *handlers) GuildAddHandler(s *discordgo.Session, g *discordgo.GuildCreate) {
 	var existingGuild database.Guild
-	if err := h.DB.First(&existingGuild, &database.Guild{ID: g.ID}).Error; err == nil {
+	if err := h.db.First(&existingGuild, &database.Guild{ID: g.ID}).Error; err == nil {
 		return
 	}
 
@@ -19,13 +19,13 @@ func (h *Handlers) GuildAddHandler(s *discordgo.Session, g *discordgo.GuildCreat
 		}
 	}
 
-	h.DB.Create(&guild)
+	h.db.Create(&guild)
 }
 
-func (h *Handlers) GuildUpdateHandler(s *discordgo.Session, g *discordgo.GuildUpdate) {
-	h.DB.Model(&database.Guild{}).Where(&database.Guild{ID: g.ID}).Update("name", g.Name)
+func (h *handlers) GuildUpdateHandler(s *discordgo.Session, g *discordgo.GuildUpdate) {
+	h.db.Model(&database.Guild{}).Where(&database.Guild{ID: g.ID}).Update("name", g.Name)
 }
 
-func (h *Handlers) GuildDeleteHandler(s *discordgo.Session, g *discordgo.GuildDelete) {
-	h.DB.Unscoped().Where(&database.Guild{ID: g.ID}).Delete(&database.Guild{})
+func (h *handlers) GuildDeleteHandler(s *discordgo.Session, g *discordgo.GuildDelete) {
+	h.db.Unscoped().Where(&database.Guild{ID: g.ID}).Delete(&database.Guild{})
 }

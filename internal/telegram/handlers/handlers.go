@@ -1,15 +1,19 @@
 package handlers
 
 import (
+	"github.com/webshining/internal/telegram/app"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
-type Handlers struct {
-	DB     *gorm.DB
+type handlers struct {
+	db     *gorm.DB
 	logger *zap.Logger
 }
 
-func New(db *gorm.DB, logger *zap.Logger) *Handlers {
-	return &Handlers{DB: db, logger: logger}
+func New(app *app.AppContext) *handlers {
+	return &handlers{
+		db:     app.DB,
+		logger: app.Logger,
+	}
 }

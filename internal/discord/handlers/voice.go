@@ -17,7 +17,7 @@ type VoiceJoinMessage struct {
 	Image       string `json:"image"`
 }
 
-func (h *Handlers) VoiceJoinHandler(s *discordgo.Session, vs *discordgo.VoiceStateUpdate) {
+func (h *handlers) VoiceJoinHandler(s *discordgo.Session, vs *discordgo.VoiceStateUpdate) {
 	if vs.ChannelID == "" {
 		return
 	}
@@ -60,7 +60,7 @@ func (h *Handlers) VoiceJoinHandler(s *discordgo.Session, vs *discordgo.VoiceSta
 		return
 	}
 
-	err = h.AMQP.Publish("", "voice", false, false,
+	err = h.rabbit.Publish("", "voice", false, false,
 		amqp091.Publishing{
 			ContentType: "application/json",
 			Body:        messageJSON,

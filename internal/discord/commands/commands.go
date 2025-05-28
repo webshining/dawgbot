@@ -1,81 +1,51 @@
 package commands
 
 import (
-	"context"
-
 	"github.com/bwmarrin/discordgo"
+	"github.com/webshining/internal/discord/app"
 	"github.com/webshining/internal/discord/commands/music"
-	"github.com/webshining/internal/discord/commands/notify.go"
+	"github.com/webshining/internal/discord/commands/notify"
 	"go.uber.org/zap"
 )
 
-type Command struct {
-	Name    string
-	Handler func(s *discordgo.Session, i *discordgo.InteractionCreate)
+type commandModule interface {
+	Commands() map[string]func(*discordgo.Session, *discordgo.InteractionCreate)
+	Definitions() []*discordgo.ApplicationCommand
 }
 
-type Commands struct {
-	Session  *discordgo.Session
+type commands struct {
 	Commands []*discordgo.ApplicationCommand
+	handlers map[string]func(*discordgo.Session, *discordgo.InteractionCreate)
 
-	logger         *zap.Logger
-	playbackCancel map[string]context.CancelFunc
-	handlers       map[string]func(*discordgo.Session, *discordgo.InteractionCreate)
+	session *discordgo.Session
+	logger  *zap.Logger
 }
 
-func New(session *discordgo.Session, logger *zap.Logger) *Commands {
-	commands := &Commands{
-		Session: session,
-		Commands: []*discordgo.ApplicationCommand{
-			{
-				Name:        "play",
-				Description: "Play a file",
-				Options: []*discordgo.ApplicationCommandOption{
-					{
-						Name:        "file",
-						Description: "The file to play",
-						Type:        discordgo.ApplicationCommandOptionAttachment,
-					},
-					{
-						Name:        "youtubeurl",
-						Description: "The youtube file to play",
-						Type:        discordgo.ApplicationCommandOptionString,
-					},
-				},
-			},
-			{
-				Name:        "skip",
-				Description: "skip current song",
-			},
-			{
-				Name:        "notify",
-				Description: "allow notifications in telegram for this guild",
-			},
-		},
-
-		logger:         logger,
-		playbackCancel: make(map[string]context.CancelFunc),
-		handlers:       make(map[string]func(*discordgo.Session, *discordgo.InteractionCreate)),
+func New(app *app.AppContext) *commands {
+	c := &commands{
+		session:  app.Session,
+		logger:   app.Logger,
+		handlers: make(map[string]func(*discordgo.Session, *discordgo.InteractionCreate)),
 	}
 
-	// Initialize command handlers
-	music := music.New(session, logger)
-	notify := notify.New(session, logger)
+	musicModule := music.New(app)
+	notifyModule := notify.New(app)
+	c.registerModules(musicModule, notifyModule)
 
-	// Register commands from different modules
-	commands.Register(notify.Commands())
-	commands.Register(music.Commands())
-
-	return commands
+	return c
 }
 
-func (c *Commands) Register(commands map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate)) {
-	for name, cmd := range commands {
-		c.handlers[name] = cmd
+func (c *commands) registerModules(modules ...commandModule) *commands {
+	for _, module := range modules {
+		c.Commands = append(c.Commands, module.Definitions()...)
+		for name, handler := range module.Commands() {
+			c.handlers[name] = handler
+		}
 	}
+	return c
 }
 
-func (c *Commands) Handler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+func (c *commands) Handler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	cmd, ok := c.handlers[i.ApplicationCommandData().Name]
 	if !ok {
 		c.logger.Error("command not found", zap.String("command", i.ApplicationCommandData().Name))

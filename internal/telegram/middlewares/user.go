@@ -6,14 +6,14 @@ import (
 	"github.com/webshining/internal/common/database"
 )
 
-func (m *Middlewares) UserMiddleware(_ *gotgbot.Bot, ctx *ext.Context) error {
+func (m *middlewares) UserMiddleware(_ *gotgbot.Bot, ctx *ext.Context) error {
 	user := ctx.EffectiveUser
 	if user == nil {
 		return nil
 	}
 
 	var dbUser database.User
-	m.DB.Preload("Guilds").Preload("Channels").FirstOrCreate(&dbUser, database.User{TelegramID: user.Id})
+	m.db.Preload("Guilds").Preload("Channels").FirstOrCreate(&dbUser, database.User{TelegramID: user.Id})
 
 	ctx.Data["user"] = &dbUser
 

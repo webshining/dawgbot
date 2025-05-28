@@ -1,21 +1,32 @@
 package rabbit
 
-import amqp "github.com/rabbitmq/amqp091-go"
+import (
+	"time"
 
-func New(url string) (*amqp.Channel, error) {
-	amqp_conn, err := amqp.Dial(url)
-	if err != nil {
-		return nil, err
+	amqp "github.com/rabbitmq/amqp091-go"
+)
+
+func New(url string) (*amqp.Connection, error) {
+	var (
+		amqpConn *amqp.Connection
+		err      error
+	)
+
+	timeout := time.After(1 * time.Minute)
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		amqpConn, err = amqp.Dial(url)
+		if err == nil {
+			return amqpConn, nil
+		}
+
+		select {
+		case <-timeout:
+			return nil, err
+		case <-ticker.C:
+			// next try
+		}
 	}
-
-	amqp_channel, err := amqp_conn.Channel()
-	if err != nil {
-		return nil, err
-	}
-
-	if _, err = amqp_channel.QueueDeclare("voice", true, false, false, false, nil); err != nil {
-		return nil, err
-	}
-
-	return amqp_channel, nil
 }

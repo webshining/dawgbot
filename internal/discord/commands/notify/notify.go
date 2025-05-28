@@ -2,6 +2,7 @@ package notify
 
 import (
 	"github.com/bwmarrin/discordgo"
+	"github.com/webshining/internal/discord/app"
 	"go.uber.org/zap"
 )
 
@@ -10,20 +11,14 @@ type Notify struct {
 	logger  *zap.Logger
 }
 
-func New(session *discordgo.Session, logger *zap.Logger) *Notify {
+func New(app *app.AppContext) *Notify {
 	return &Notify{
-		session: session,
-		logger:  logger,
+		session: app.Session,
+		logger:  app.Logger,
 	}
 }
 
-func (n *Notify) Commands() map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	commands := make(map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate))
-	commands["notify"] = n.NotifyHandler
-	return commands
-}
-
-func (n *Notify) NotifyHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+func (n *Notify) notifyHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
@@ -43,5 +38,20 @@ func (n *Notify) NotifyHandler(s *discordgo.Session, i *discordgo.InteractionCre
 	}); err != nil {
 		n.logger.Error("Failed to respond to interaction", zap.Error(err), zap.String("guild_id", i.GuildID))
 		return
+	}
+}
+
+func (n *Notify) Commands() map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	commands := make(map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate))
+	commands["notify"] = n.notifyHandler
+	return commands
+}
+
+func (m *Notify) Definitions() []*discordgo.ApplicationCommand {
+	return []*discordgo.ApplicationCommand{
+		{
+			Name:        "notify",
+			Description: "allow notifications in telegram for this guild",
+		},
 	}
 }
