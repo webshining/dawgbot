@@ -46,7 +46,7 @@ func (h *Handlers) VoiceJoinHandler(s *discordgo.Session, vs *discordgo.VoiceSta
 	}
 
 	message := VoiceJoinMessage{
-		Username:    user.GlobalName,
+		Username:    user.DisplayName(),
 		Channel:     channel.ID,
 		ChannelName: channel.Name,
 		Guild:       guild.ID,
