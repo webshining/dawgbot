@@ -1,19 +1,21 @@
 FROM golang:1.24 AS builder
 
+RUN apt-get update && apt-get install -y gcc
+
 WORKDIR /app
 
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -tags=prod -a -ldflags '-extldflags "-static"' -o /app/bin/telegram ./cmd/telegram/main.go
+ENV CGO_ENABLED=1
+RUN go build -tags=prod -o app ./cmd/telegram/main.go
 
-FROM alpine:latest
+FROM golang:1.24
 
 WORKDIR /app
 
-COPY --from=builder /app/bin/telegram /app/
-
+COPY --from=builder /app/app /app/
 COPY .env /app/.env
 
-CMD [ "/app/telegram" ]
+CMD ["/app/app"]
