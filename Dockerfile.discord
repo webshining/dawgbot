@@ -1,6 +1,6 @@
-FROM golang:1.24 AS builder
+FROM golang:1.24-alpine AS builder
 
-RUN apt-get update && apt-get install -y gcc libopus-dev
+RUN apk add --no-cache gcc musl-dev
 
 WORKDIR /app
 
@@ -8,20 +8,23 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-ENV CGO_ENABLED=1
-RUN go build -tags=prod -o app ./cmd/discord/main.go
 
-FROM golang:1.24
+RUN CGO_ENABLED=1 \
+    GOOS=linux \
+    GOARCH=amd64 \
+    CC=gcc \
+    go build -tags=prod -ldflags '-extldflags "-static"' -o app ./cmd/discord/main.go
 
-RUN apt-get update && apt-get install -y ffmpeg libopus0 curl
+FROM alpine
 
-RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
-    -o /usr/local/bin/yt-dlp && \
-    chmod a+rx /usr/local/bin/yt-dlp
+RUN apk add --no-cache ffmpeg curl python3 && \
+    curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
+        -o /usr/local/bin/yt-dlp && \
+    chmod +x /usr/local/bin/yt-dlp
 
 WORKDIR /app
 
 COPY --from=builder /app/app /app/
 COPY .env /app/.env
 
-CMD ["/app/app"]
+CMD ["nice", "-n", "-5", "/app/app"]

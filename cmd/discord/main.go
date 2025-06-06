@@ -1,6 +1,8 @@
 package main
 
-import "github.com/webshining/internal/discord"
+import (
+	"github.com/webshining/internal/discord"
+)
 
 func main() {
 	bot, err := discord.New()

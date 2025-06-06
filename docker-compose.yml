@@ -7,7 +7,6 @@ services:
         networks:
             - services
             - storage
-
     discord:
         build:
             context: .
@@ -16,6 +15,10 @@ services:
         networks:
             - services
             - storage
+        cap_add:
+            - SYS_NICE
+        ulimits:
+            rtprio: 99
 
 networks:
     services:

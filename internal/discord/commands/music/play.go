@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/bwmarrin/dgvoice"
 	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
 )
@@ -26,7 +25,7 @@ func (c *Music) Play(s *discordgo.Session, i *discordgo.InteractionCreate) {
 					Content: "Файл получен, обрабатываю...",
 				},
 			})
-			go c.playAudio(s, i, attachment.URL)
+			go c.playAudio(i, attachment.URL)
 			return
 		case "youtubeurl":
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -35,27 +34,29 @@ func (c *Music) Play(s *discordgo.Session, i *discordgo.InteractionCreate) {
 					Content: "Ссылка получена, обрабатываю...",
 				},
 			})
-			go c.playAudioYoutube(s, i, opt.Value.(string))
+			go c.playAudioYoutube(i, opt.Value.(string))
 			return
 		}
 	}
 }
 
-func (c *Music) joinVoice(s *discordgo.Session, i *discordgo.InteractionCreate) (*discordgo.VoiceConnection, error) {
-	vs, err := s.State.VoiceState(i.GuildID, i.Member.User.ID)
+func (c *Music) joinVoice(i *discordgo.InteractionCreate) *discordgo.VoiceConnection {
+	vs, err := c.session.State.VoiceState(i.GuildID, i.Member.User.ID)
 	if err != nil {
 		c.logger.Error("error getting voice state", zap.Error(err))
-		return nil, err
+		return nil
 	}
-	vc, ok := s.VoiceConnections[vs.GuildID]
+
+	vc, ok := c.session.VoiceConnections[i.GuildID]
 	if !ok {
-		vc, err = s.ChannelVoiceJoin(i.GuildID, vs.ChannelID, false, false)
+		vc, err = c.session.ChannelVoiceJoin(i.GuildID, vs.ChannelID, false, false)
 		if err != nil {
 			c.logger.Error("error joining voice channel", zap.Error(err))
-			return nil, err
+			return nil
 		}
 	}
-	return vc, nil
+
+	return vc
 }
 
 func (c *Music) scheduleAutoDisconnect(guildID string) {
@@ -72,7 +73,8 @@ func (c *Music) scheduleAutoDisconnect(guildID string) {
 	})
 }
 
-func (c *Music) playAudioYoutube(s *discordgo.Session, i *discordgo.InteractionCreate, url string) {
+func (c *Music) playAudioYoutube(i *discordgo.InteractionCreate, url string) {
+	// cancel previous playback if exists
 	if timer, exists := c.autoDisconnectTimers[i.GuildID]; exists {
 		timer.Stop()
 		delete(c.autoDisconnectTimers, i.GuildID)
@@ -81,33 +83,39 @@ func (c *Music) playAudioYoutube(s *discordgo.Session, i *discordgo.InteractionC
 		cancel()
 	}
 
-	file, err := c.downloadTempFileYoutube(url)
-	if err != nil {
+	file := c.downloadTempFileYoutube(url)
+	if file == nil {
+		return
+	}
+
+	vc := c.joinVoice(i)
+	if vc == nil {
 		return
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	c.playbackCancel[i.GuildID] = cancel
 
+	// call when cancel() is called
 	stop := make(chan bool)
-	vc, _ := c.joinVoice(s, i)
 	go func() {
 		<-ctx.Done()
 		stop <- true
-		cancel()
 		delete(c.playbackCancel, i.GuildID)
-		os.Remove(file)
-		c.scheduleAutoDisconnect(i.GuildID)
+		os.Remove(*file)
 	}()
 
 	go func() {
-		dgvoice.PlayAudioFile(vc, file, stop)
+		end := c.playFile(vc, *file, stop)
+		if end {
+			c.scheduleAutoDisconnect(i.GuildID)
+		}
 		cancel()
 	}()
-
 }
 
-func (c *Music) playAudio(s *discordgo.Session, i *discordgo.InteractionCreate, url string) {
+func (c *Music) playAudio(i *discordgo.InteractionCreate, url string) {
+	// cancel previous playback if exists
 	if timer, exists := c.autoDisconnectTimers[i.GuildID]; exists {
 		timer.Stop()
 		delete(c.autoDisconnectTimers, i.GuildID)
@@ -116,30 +124,36 @@ func (c *Music) playAudio(s *discordgo.Session, i *discordgo.InteractionCreate, 
 		cancel()
 	}
 
-	file, err := c.downloadTempFile(url)
-	if err != nil {
+	file := c.downloadTempFile(url)
+	if file == nil {
 		return
 	}
-	if !c.checkIsAudio(file) {
+	if !c.checkIsAudio(*file) {
+		return
+	}
+
+	vc := c.joinVoice(i)
+	if vc == nil {
 		return
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	c.playbackCancel[i.GuildID] = cancel
 
+	// call when cancel() is called
 	stop := make(chan bool)
-	vc, _ := c.joinVoice(s, i)
 	go func() {
 		<-ctx.Done()
 		stop <- true
-		cancel()
 		delete(c.playbackCancel, i.GuildID)
-		os.Remove(file)
-		c.scheduleAutoDisconnect(i.GuildID)
+		os.Remove(*file)
 	}()
 
 	go func() {
-		dgvoice.PlayAudioFile(vc, file, stop)
+		end := c.playFile(vc, *file, stop)
+		if end {
+			c.scheduleAutoDisconnect(i.GuildID)
+		}
 		cancel()
 	}()
 }
@@ -167,10 +181,11 @@ func (c *Music) checkIsAudio(filename string) bool {
 	return false
 }
 
-func (c *Music) downloadTempFileYoutube(url string) (string, error) {
+func (c *Music) downloadTempFileYoutube(url string) *string {
 	tempFile, err := os.CreateTemp("", "discord_upload-*.tmp")
 	if err != nil {
-		return "", err
+		c.logger.Error("failed to create temp file", zap.Error(err))
+		return nil
 	}
 	filename := tempFile.Name()
 	tempFile.Close()
@@ -178,26 +193,30 @@ func (c *Music) downloadTempFileYoutube(url string) (string, error) {
 
 	exec.Command("yt-dlp", "-f", "bestaudio", "-o", filename, url).Run()
 
-	return filename, nil
+	return &filename
 }
 
-func (c *Music) downloadTempFile(url string) (string, error) {
+func (c *Music) downloadTempFile(url string) *string {
 	resp, err := http.Get(url)
 	if err != nil {
-		return "", err
+		c.logger.Error("failed to download file", zap.Error(err))
+		return nil
 	}
 	defer resp.Body.Close()
 
 	tempFile, err := os.CreateTemp("", "discord_upload-*.tmp")
 	if err != nil {
-		return "", err
+		c.logger.Error("failed to create temp file", zap.Error(err))
+		return nil
 	}
+	filename := tempFile.Name()
 	defer tempFile.Close()
 
 	_, err = io.Copy(tempFile, resp.Body)
 	if err != nil {
-		return "", err
+		c.logger.Error("failed to copy response body to temp file", zap.Error(err))
+		return nil
 	}
 
-	return tempFile.Name(), nil
+	return &filename
 }
