@@ -1,6 +1,8 @@
 package notify
 
 import (
+	"fmt"
+
 	"github.com/bwmarrin/discordgo"
 	"github.com/webshining/internal/discord/app"
 	"go.uber.org/zap"
@@ -19,26 +21,24 @@ func New(app *app.AppContext) *Notify {
 }
 
 func (n *Notify) notifyHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
-			Content: "Notifications have been enabled for this guild.",
+			Content: "To receive notifications in Telegram, please click the button below.",
+			Flags:   discordgo.MessageFlagsEphemeral,
 			Components: []discordgo.MessageComponent{
 				discordgo.ActionsRow{
 					Components: []discordgo.MessageComponent{
 						discordgo.Button{
 							Label: "Telegram",
 							Style: discordgo.LinkButton,
-							URL:   "https://t.me/dawgdsbot?start=" + i.GuildID,
+							URL:   fmt.Sprintf("https://t.me/dawgdsbot?start=%s_%s", i.GuildID, i.Member.User.ID),
 						},
 					},
 				},
 			},
 		},
-	}); err != nil {
-		n.logger.Error("Failed to respond to interaction", zap.Error(err), zap.String("guild_id", i.GuildID))
-		return
-	}
+	})
 }
 
 func (n *Notify) Commands() map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate) {

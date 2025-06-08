@@ -13,6 +13,7 @@ services:
             dockerfile: Dockerfile.discord
         restart: unless-stopped
         networks:
+            - lowlatency-net
             - services
             - storage
         cap_add:
@@ -25,3 +26,7 @@ networks:
         external: true
     storage:
         external: true
+    lowlatency-net:
+        driver: bridge
+        driver_opts:
+            com.docker.network.driver.mtu: 1400
