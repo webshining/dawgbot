@@ -2,15 +2,10 @@ package music
 
 import (
 	"context"
-	"encoding/json"
-	"io"
-	"net/http"
-	"os"
-	"os/exec"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
-	"go.uber.org/zap"
+	"github.com/webshining/internal/common/database"
 )
 
 func (c *Music) Play(s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -25,7 +20,7 @@ func (c *Music) Play(s *discordgo.Session, i *discordgo.InteractionCreate) {
 					Content: "Файл получен, обрабатываю...",
 				},
 			})
-			go c.playAudio(i, attachment.URL)
+			go c.playHandler(i, attachment.URL)
 			return
 		case "youtubeurl":
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -34,29 +29,62 @@ func (c *Music) Play(s *discordgo.Session, i *discordgo.InteractionCreate) {
 					Content: "Ссылка получена, обрабатываю...",
 				},
 			})
-			go c.playAudioYoutube(i, opt.Value.(string))
+			go c.playHandler(i, opt.Value.(string))
 			return
 		}
 	}
 }
 
-func (c *Music) joinVoice(i *discordgo.InteractionCreate) *discordgo.VoiceConnection {
-	vs, err := c.session.State.VoiceState(i.GuildID, i.Member.User.ID)
-	if err != nil {
-		c.logger.Error("error getting voice state", zap.Error(err))
-		return nil
+func (c *Music) playHandler(i *discordgo.InteractionCreate, url string) {
+	file := c.downloadTempFile(url)
+	if file == nil {
+		return
 	}
 
-	vc, ok := c.session.VoiceConnections[i.GuildID]
-	if !ok {
-		vc, err = c.session.ChannelVoiceJoin(i.GuildID, vs.ChannelID, false, false)
-		if err != nil {
-			c.logger.Error("error joining voice channel", zap.Error(err))
-			return nil
+	c.db.Create(&database.Playlist{GuildID: i.GuildID, FileUrl: *file})
+
+	if _, ok := c.playbackCancel[i.GuildID]; ok {
+		return
+	}
+
+	// stop autodisconnect timer
+	if timer, exists := c.autoDisconnectTimers[i.GuildID]; exists {
+		timer.Stop()
+		delete(c.autoDisconnectTimers, i.GuildID)
+	}
+
+	vc := c.joinVoice(i)
+	if vc == nil {
+		return
+	}
+
+	go func() {
+		end := c.playAudio(vc, *file, vc.GuildID)
+		if end {
+			c.scheduleAutoDisconnect(i.GuildID)
 		}
+	}()
+}
+
+func (c *Music) playAudio(vc *discordgo.VoiceConnection, file string, guildID string) bool {
+	ctx, cancel := context.WithCancel(context.Background())
+	c.playbackCancel[guildID] = cancel
+
+	end := c.PlayFile(vc, file, ctx.Done())
+
+	var trackToDelete *database.Playlist
+	c.db.Take(trackToDelete, "guild_id = ?", vc.GuildID)
+	if trackToDelete != nil {
+		c.db.Unscoped().Delete(&trackToDelete)
 	}
 
-	return vc
+	var nextTrack *database.Playlist
+	c.db.First(nextTrack, "guild_id = ?", vc.GuildID)
+	if nextTrack == nil {
+		return end
+	}
+
+	return c.playAudio(vc, nextTrack.FileUrl, guildID)
 }
 
 func (c *Music) scheduleAutoDisconnect(guildID string) {
@@ -71,152 +99,4 @@ func (c *Music) scheduleAutoDisconnect(guildID string) {
 		}
 		delete(c.autoDisconnectTimers, guildID)
 	})
-}
-
-func (c *Music) playAudioYoutube(i *discordgo.InteractionCreate, url string) {
-	// cancel previous playback if exists
-	if timer, exists := c.autoDisconnectTimers[i.GuildID]; exists {
-		timer.Stop()
-		delete(c.autoDisconnectTimers, i.GuildID)
-	}
-	if cancel, exists := c.playbackCancel[i.GuildID]; exists {
-		cancel()
-	}
-
-	file := c.downloadTempFileYoutube(url)
-	if file == nil {
-		return
-	}
-
-	vc := c.joinVoice(i)
-	if vc == nil {
-		return
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	c.playbackCancel[i.GuildID] = cancel
-
-	// call when cancel() is called
-	stop := make(chan bool)
-	go func() {
-		<-ctx.Done()
-		stop <- true
-		delete(c.playbackCancel, i.GuildID)
-		os.Remove(*file)
-	}()
-
-	go func() {
-		end := c.playFile(vc, *file, stop)
-		if end {
-			c.scheduleAutoDisconnect(i.GuildID)
-		}
-		cancel()
-	}()
-}
-
-func (c *Music) playAudio(i *discordgo.InteractionCreate, url string) {
-	// cancel previous playback if exists
-	if timer, exists := c.autoDisconnectTimers[i.GuildID]; exists {
-		timer.Stop()
-		delete(c.autoDisconnectTimers, i.GuildID)
-	}
-	if cancel, exists := c.playbackCancel[i.GuildID]; exists {
-		cancel()
-	}
-
-	file := c.downloadTempFile(url)
-	if file == nil {
-		return
-	}
-	if !c.checkIsAudio(*file) {
-		return
-	}
-
-	vc := c.joinVoice(i)
-	if vc == nil {
-		return
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	c.playbackCancel[i.GuildID] = cancel
-
-	// call when cancel() is called
-	stop := make(chan bool)
-	go func() {
-		<-ctx.Done()
-		stop <- true
-		delete(c.playbackCancel, i.GuildID)
-		os.Remove(*file)
-	}()
-
-	go func() {
-		end := c.playFile(vc, *file, stop)
-		if end {
-			c.scheduleAutoDisconnect(i.GuildID)
-		}
-		cancel()
-	}()
-}
-
-func (c *Music) checkIsAudio(filename string) bool {
-	type FFProbeOutput struct {
-		Streams []struct {
-			CodecType string `json:"codec_type"`
-		} `json:"streams"`
-	}
-
-	cmd, err := exec.Command("ffprobe", "-v", "error", "-show_entries", "stream=codec_type", "-of", "json", filename).Output()
-	if err != nil {
-		return false
-	}
-	var result FFProbeOutput
-	if err := json.Unmarshal(cmd, &result); err != nil {
-		return false
-	}
-	for _, stream := range result.Streams {
-		if stream.CodecType == "audio" {
-			return true
-		}
-	}
-	return false
-}
-
-func (c *Music) downloadTempFileYoutube(url string) *string {
-	tempFile, err := os.CreateTemp("", "discord_upload-*.tmp")
-	if err != nil {
-		c.logger.Error("failed to create temp file", zap.Error(err))
-		return nil
-	}
-	filename := tempFile.Name()
-	tempFile.Close()
-	os.Remove(filename)
-
-	exec.Command("yt-dlp", "-f", "bestaudio", "-o", filename, url).Run()
-
-	return &filename
-}
-
-func (c *Music) downloadTempFile(url string) *string {
-	resp, err := http.Get(url)
-	if err != nil {
-		c.logger.Error("failed to download file", zap.Error(err))
-		return nil
-	}
-	defer resp.Body.Close()
-
-	tempFile, err := os.CreateTemp("", "discord_upload-*.tmp")
-	if err != nil {
-		c.logger.Error("failed to create temp file", zap.Error(err))
-		return nil
-	}
-	filename := tempFile.Name()
-	defer tempFile.Close()
-
-	_, err = io.Copy(tempFile, resp.Body)
-	if err != nil {
-		c.logger.Error("failed to copy response body to temp file", zap.Error(err))
-		return nil
-	}
-
-	return &filename
 }

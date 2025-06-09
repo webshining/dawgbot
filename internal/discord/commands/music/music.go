@@ -7,6 +7,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/webshining/internal/discord/app"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 type Music struct {
@@ -15,12 +16,14 @@ type Music struct {
 
 	session *discordgo.Session
 	logger  *zap.Logger
+	db      *gorm.DB
 }
 
 func New(app *app.AppContext) *Music {
 	return &Music{
 		session:              app.Session,
 		logger:               app.Logger,
+		db:                   app.DB,
 		playbackCancel:       make(map[string]context.CancelFunc),
 		autoDisconnectTimers: make(map[string]*time.Timer),
 	}
@@ -46,7 +49,7 @@ func (m *Music) Definitions() []*discordgo.ApplicationCommand {
 				},
 				{
 					Name:        "youtubeurl",
-					Description: "The youtube file to play",
+					Description: "The youtube url to play",
 					Type:        discordgo.ApplicationCommandOptionString,
 				},
 			},
