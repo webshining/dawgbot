@@ -1,9 +1,10 @@
 package middlewares
 
 import (
+	"bot/internal/common/database"
+
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
-	"github.com/webshining/internal/common/database"
 )
 
 func (m *middlewares) UserMiddleware(_ *gotgbot.Bot, ctx *ext.Context) error {

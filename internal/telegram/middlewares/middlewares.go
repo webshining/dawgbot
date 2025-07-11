@@ -1,7 +1,8 @@
 package middlewares
 
 import (
-	"github.com/webshining/internal/telegram/app"
+	"bot/internal/telegram/app"
+
 	"gorm.io/gorm"
 )
 

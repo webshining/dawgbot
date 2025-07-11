@@ -3,8 +3,9 @@ package keyboards
 import (
 	"fmt"
 
+	"bot/internal/common/database"
+
 	"github.com/PaulSonOfLars/gotgbot/v2"
-	"github.com/webshining/internal/common/database"
 )
 
 func GuildsMarkup(guilds []*database.Guild) gotgbot.InlineKeyboardMarkup {

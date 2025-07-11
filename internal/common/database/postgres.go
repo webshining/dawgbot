@@ -22,7 +22,7 @@ func New(dns string) (*gorm.DB, error) {
 	for {
 		db, err = gorm.Open(postgres.Open(dns), &gorm.Config{})
 		if err == nil {
-			db.AutoMigrate(&Guild{}, &Channel{}, &User{}, &Playlist{})
+			db.AutoMigrate(&Guild{}, &Channel{}, &User{})
 			return db, nil
 		}
 

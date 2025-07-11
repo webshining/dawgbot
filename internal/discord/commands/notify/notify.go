@@ -3,8 +3,9 @@ package notify
 import (
 	"fmt"
 
+	"bot/internal/discord/app"
+
 	"github.com/bwmarrin/discordgo"
-	"github.com/webshining/internal/discord/app"
 	"go.uber.org/zap"
 )
 

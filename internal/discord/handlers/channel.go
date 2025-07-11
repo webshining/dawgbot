@@ -1,8 +1,9 @@
 package handlers
 
 import (
+	"bot/internal/common/database"
+
 	"github.com/bwmarrin/discordgo"
-	"github.com/webshining/internal/common/database"
 )
 
 func (h *handlers) ChannelAddHandler(s *discordgo.Session, c *discordgo.ChannelCreate) {

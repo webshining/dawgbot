@@ -15,12 +15,12 @@ import (
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 
-	"github.com/webshining/internal/common/database"
-	"github.com/webshining/internal/common/rabbit"
-	"github.com/webshining/internal/telegram/app"
-	hndls "github.com/webshining/internal/telegram/handlers"
-	"github.com/webshining/internal/telegram/middlewares"
-	"github.com/webshining/internal/telegram/notifier"
+	"bot/internal/common/database"
+	"bot/internal/common/rabbit"
+	"bot/internal/telegram/app"
+	hndls "bot/internal/telegram/handlers"
+	"bot/internal/telegram/middlewares"
+	"bot/internal/telegram/notifier"
 )
 
 type bot struct {
@@ -82,8 +82,6 @@ func New() (*bot, error) {
 	dispatcher.AddHandlerToGroup(handlers.NewCallback(callbackquery.All, middlewares.UserMiddleware), -10)
 	dispatcher.AddHandlerToGroup(handlers.NewCommand("start", hndl.StartHandler), 10)
 	dispatcher.AddHandlerToGroup(handlers.NewCommand("notify", hndl.NotifyHandler), 10)
-	dispatcher.AddHandlerToGroup(handlers.NewMessage(message.Audio, hndl.FileHandler), 10)
-	dispatcher.AddHandlerToGroup(handlers.NewMessage(message.Voice, hndl.FileHandler), 10)
 	dispatcher.AddHandlerToGroup(handlers.NewCallback(callbackquery.Prefix("guild:"), hndl.NotifyGuildHandler), 10)
 	dispatcher.AddHandlerToGroup(handlers.NewCallback(callbackquery.Prefix("channel:"), hndl.NotifyChannelHandler), 10)
 

@@ -1,19 +1,22 @@
 package handlers
 
 import (
+	"bot/internal/discord/app"
+
+	"github.com/bwmarrin/discordgo"
 	amqp "github.com/rabbitmq/amqp091-go"
-	"github.com/webshining/internal/discord/app"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 type handlers struct {
-	db     *gorm.DB
-	rabbit *amqp.Channel
-	logger *zap.Logger
+	db       *gorm.DB
+	rabbit   *amqp.Channel
+	logger   *zap.Logger
+	commands []*discordgo.ApplicationCommand
 }
 
-func New(app *app.AppContext) (*handlers, error) {
+func New(app *app.AppContext, commands []*discordgo.ApplicationCommand) (*handlers, error) {
 	rabbitChannel, err := app.Rabbit.Channel()
 	if err != nil {
 		return nil, err
@@ -22,7 +25,7 @@ func New(app *app.AppContext) (*handlers, error) {
 		return nil, err
 	}
 
-	return &handlers{db: app.DB, rabbit: rabbitChannel, logger: app.Logger}, nil
+	return &handlers{db: app.DB, rabbit: rabbitChannel, logger: app.Logger, commands: commands}, nil
 }
 
 func (h *handlers) Handlers() []interface{} {

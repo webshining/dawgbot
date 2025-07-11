@@ -5,14 +5,15 @@ import (
 	"os"
 	"os/signal"
 
+	"bot/internal/common/database"
+	"bot/internal/common/rabbit"
+	"bot/internal/discord/app"
+	"bot/internal/discord/commands"
+	"bot/internal/discord/handlers"
+
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
 	amqp "github.com/rabbitmq/amqp091-go"
-	"github.com/webshining/internal/common/database"
-	"github.com/webshining/internal/common/rabbit"
-	"github.com/webshining/internal/discord/app"
-	"github.com/webshining/internal/discord/commands"
-	"github.com/webshining/internal/discord/handlers"
 	"go.uber.org/zap"
 )
 
@@ -62,7 +63,7 @@ func New() (*Bot, error) {
 	bot.AddHandler(commands.Handler)
 
 	// register handlers
-	handlers, err := handlers.New(app)
+	handlers, err := handlers.New(app, commands.Commands)
 	if err != nil {
 		logger.Error("error creating handlers", zap.Error(err))
 		return nil, err
@@ -89,11 +90,7 @@ func (b *Bot) Run() {
 		return
 	}
 
-	guilds, _ := b.session.UserGuilds(100, "", "", false)
-	for _, guild := range guilds {
-		commands := b.commands
-		b.session.ApplicationCommandBulkOverwrite(b.session.State.User.ID, guild.ID, commands)
-	}
+	b.session.ApplicationCommandBulkOverwrite(b.session.State.User.ID, "", b.commands)
 
 	b.logger.Info("Bot is now running. Press CTRL+C to exit.")
 	sc := make(chan os.Signal, 1)

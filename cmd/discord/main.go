@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/webshining/internal/discord"
+	"bot/internal/discord"
 )
 
 func main() {

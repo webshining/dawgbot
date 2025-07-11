@@ -1,8 +1,9 @@
 package handlers
 
 import (
+	"bot/internal/telegram/app"
+
 	amqp "github.com/rabbitmq/amqp091-go"
-	"github.com/webshining/internal/telegram/app"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )

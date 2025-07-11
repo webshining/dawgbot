@@ -17,14 +17,9 @@ RUN CGO_ENABLED=1 \
 
 FROM alpine
 
-RUN apk add --no-cache ffmpeg curl python3 && \
-    curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
-        -o /usr/local/bin/yt-dlp && \
-    chmod +x /usr/local/bin/yt-dlp
-
 WORKDIR /app
 
 COPY --from=builder /app/app /app/
 COPY .env /app/.env
 
-CMD ["nice", "-n", "-5", "/app/app"]
+CMD ["/app/app"]

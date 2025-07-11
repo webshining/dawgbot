@@ -1,8 +1,9 @@
 package handlers
 
 import (
+	"bot/internal/common/database"
+
 	"github.com/bwmarrin/discordgo"
-	"github.com/webshining/internal/common/database"
 )
 
 func (h *handlers) GuildAddHandler(s *discordgo.Session, g *discordgo.GuildCreate) {

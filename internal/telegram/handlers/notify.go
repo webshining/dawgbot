@@ -3,10 +3,11 @@ package handlers
 import (
 	"strings"
 
+	"bot/internal/common/database"
+	"bot/internal/telegram/keyboards"
+
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
-	"github.com/webshining/internal/common/database"
-	"github.com/webshining/internal/telegram/keyboards"
 )
 
 func (h *handlers) NotifyHandler(b *gotgbot.Bot, ctx *ext.Context) error {

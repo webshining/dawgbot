@@ -8,6 +8,11 @@ import (
 	"go.uber.org/zap"
 )
 
+type Message struct {
+	Message string `json:"message"`
+	Data    []byte `json:"data"`
+}
+
 type VoiceJoinMessage struct {
 	Username    string `json:"username"`
 	Channel     string `json:"channel"`
@@ -45,13 +50,17 @@ func (h *handlers) VoiceJoinHandler(s *discordgo.Session, vs *discordgo.VoiceSta
 		}
 	}
 
-	message := VoiceJoinMessage{
+	data, _ := json.Marshal(VoiceJoinMessage{
 		Username:    user.DisplayName(),
 		Channel:     channel.ID,
 		ChannelName: channel.Name,
 		Guild:       guild.ID,
 		GuildName:   guild.Name,
 		Image:       guild.IconURL("1024"),
+	})
+	message := Message{
+		Message: "voice_join",
+		Data:    data,
 	}
 
 	messageJSON, err := json.Marshal(message)

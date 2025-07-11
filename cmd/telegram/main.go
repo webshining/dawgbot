@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/webshining/internal/telegram"
+	"bot/internal/telegram"
 )
 
 func main() {

@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
-	"log"
+
+	"bot/internal/common/database"
+	"bot/internal/telegram/app"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	amqp "github.com/rabbitmq/amqp091-go"
-	"github.com/webshining/internal/common/database"
-	"github.com/webshining/internal/telegram/app"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -19,6 +19,11 @@ type Notifier struct {
 	bot    *gotgbot.Bot
 	db     *gorm.DB
 	logger *zap.Logger
+}
+
+type Message struct {
+	Message string `json:"message"`
+	Data    []byte `json:"data"`
 }
 
 type VoiceJoinMessage struct {
@@ -62,31 +67,35 @@ func (n *Notifier) Start() error {
 
 	go func() {
 		for d := range msgs {
-			var msg VoiceJoinMessage
+			var msg Message
 			if err := json.Unmarshal(d.Body, &msg); err != nil {
-				log.Printf("error:%s", err)
+				n.logger.Error("Failed to unmarshal message", zap.Error(err))
 				continue
 			}
+			if msg.Message == "voice_join" {
+				var data VoiceJoinMessage
+				json.Unmarshal(msg.Data, &data)
 
-			var channel *database.Channel
-			n.db.Preload("Users").First(&channel, "id = ?", msg.Channel)
-			for _, user := range channel.Users {
-				text := fmt.Sprintf("<code>[</code> <b>%s</b> <code>]</code> — <code>[</code> <b>%s</b> <code>]</code> — <code>[</code> <b>%s</b> <code>]</code>",
-					html.EscapeString(msg.GuildName),
-					html.EscapeString(msg.ChannelName),
-					html.EscapeString(msg.Username),
-				)
-				if user.LastGuildID != msg.Guild {
-					user.LastGuildID = msg.Guild
-					n.db.Save(&user)
-					n.bot.SendPhoto(user.TelegramID, gotgbot.InputFileByURL(msg.Image), &gotgbot.SendPhotoOpts{
-						Caption:   text,
-						ParseMode: "HTML",
-					})
-				} else {
-					n.bot.SendMessage(user.TelegramID, text, &gotgbot.SendMessageOpts{
-						ParseMode: "HTML",
-					})
+				var channel *database.Channel
+				n.db.Preload("Users").First(&channel, "id = ?", data.Channel)
+				for _, user := range channel.Users {
+					text := fmt.Sprintf("<code>[</code> <b>%s</b> <code>]</code> — <code>[</code> <b>%s</b> <code>]</code> — <code>[</code> <b>%s</b> <code>]</code>",
+						html.EscapeString(data.GuildName),
+						html.EscapeString(data.ChannelName),
+						html.EscapeString(data.Username),
+					)
+					if user.LastGuildID != data.Guild {
+						user.LastGuildID = data.Guild
+						n.db.Save(&user)
+						n.bot.SendPhoto(user.TelegramID, gotgbot.InputFileByURL(data.Image), &gotgbot.SendPhotoOpts{
+							Caption:   text,
+							ParseMode: "HTML",
+						})
+					} else {
+						n.bot.SendMessage(user.TelegramID, text, &gotgbot.SendMessageOpts{
+							ParseMode: "HTML",
+						})
+					}
 				}
 			}
 		}

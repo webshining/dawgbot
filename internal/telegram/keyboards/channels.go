@@ -3,8 +3,9 @@ package keyboards
 import (
 	"fmt"
 
+	"bot/internal/common/database"
+
 	"github.com/PaulSonOfLars/gotgbot/v2"
-	"github.com/webshining/internal/common/database"
 )
 
 func ChannelsMarkup(channels []*database.Channel, userChannels []*database.Channel) gotgbot.InlineKeyboardMarkup {

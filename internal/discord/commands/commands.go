@@ -1,10 +1,10 @@
 package commands
 
 import (
+	"bot/internal/discord/app"
+	"bot/internal/discord/commands/notify"
+
 	"github.com/bwmarrin/discordgo"
-	"github.com/webshining/internal/discord/app"
-	"github.com/webshining/internal/discord/commands/music"
-	"github.com/webshining/internal/discord/commands/notify"
 	"go.uber.org/zap"
 )
 
@@ -28,20 +28,9 @@ func New(app *app.AppContext) *commands {
 		handlers: make(map[string]func(*discordgo.Session, *discordgo.InteractionCreate)),
 	}
 
-	musicModule := music.New(app)
 	notifyModule := notify.New(app)
-	c.registerModules(musicModule, notifyModule)
+	c.registerModules(notifyModule)
 
-	return c
-}
-
-func (c *commands) registerModules(modules ...commandModule) *commands {
-	for _, module := range modules {
-		c.Commands = append(c.Commands, module.Definitions()...)
-		for name, handler := range module.Commands() {
-			c.handlers[name] = handler
-		}
-	}
 	return c
 }
 

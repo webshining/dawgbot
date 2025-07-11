@@ -3,9 +3,10 @@ package handlers
 import (
 	"strings"
 
+	"bot/internal/common/database"
+
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
-	"github.com/webshining/internal/common/database"
 	"go.uber.org/zap"
 )
 
@@ -24,7 +25,6 @@ func (h *handlers) StartHandler(b *gotgbot.Bot, ctx *ext.Context) error {
 
 		h.db.Model(&user).Association("Guilds").Append(&dbGuild)
 		h.db.Model(&user).Association("Channels").Append(&dbGuild.Channels)
-		user.DiscordID = data[1]
 		h.db.Save(&user)
 
 		b.SendMessage(ctx.EffectiveChat.Id, "Success added guild: "+dbGuild.Name, nil)
