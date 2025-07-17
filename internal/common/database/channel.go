@@ -1,10 +1,7 @@
 package database
 
-import "gorm.io/gorm"
-
 type Channel struct {
-	gorm.Model
-	ID      string
+	ID      string `gorm:"primaryKey"`
 	Name    string
 	GuildID string
 	Users   []*User `gorm:"many2many:user_channel;constraint:OnDelete:CASCADE;"`

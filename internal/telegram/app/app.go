@@ -9,8 +9,8 @@ import (
 
 type AppContext struct {
 	Bot    *gotgbot.Bot
-	Rabbit *amqp.Connection
 	DB     *gorm.DB
+	Rabbit *amqp.Connection
 	Logger *zap.Logger
 }
 

@@ -1,12 +1,11 @@
 package notifier
 
 import (
+	"bot/internal/common/database"
+	"bot/internal/telegram/app"
 	"encoding/json"
 	"fmt"
 	"html"
-
-	"bot/internal/common/database"
-	"bot/internal/telegram/app"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -77,7 +76,7 @@ func (n *Notifier) Start() error {
 				json.Unmarshal(msg.Data, &data)
 
 				var channel *database.Channel
-				n.db.Preload("Users").First(&channel, "id = ?", data.Channel)
+				n.db.Preload("Users").First(&channel, data.Channel)
 				for _, user := range channel.Users {
 					text := fmt.Sprintf("<code>[</code> <b>%s</b> <code>]</code> — <code>[</code> <b>%s</b> <code>]</code> — <code>[</code> <b>%s</b> <code>]</code>",
 						html.EscapeString(data.GuildName),
@@ -87,12 +86,12 @@ func (n *Notifier) Start() error {
 					if user.LastGuildID != data.Guild {
 						user.LastGuildID = data.Guild
 						n.db.Save(&user)
-						n.bot.SendPhoto(user.TelegramID, gotgbot.InputFileByURL(data.Image), &gotgbot.SendPhotoOpts{
+						n.bot.SendPhoto(user.ID, gotgbot.InputFileByURL(data.Image), &gotgbot.SendPhotoOpts{
 							Caption:   text,
 							ParseMode: "HTML",
 						})
 					} else {
-						n.bot.SendMessage(user.TelegramID, text, &gotgbot.SendMessageOpts{
+						n.bot.SendMessage(user.ID, text, &gotgbot.SendMessageOpts{
 							ParseMode: "HTML",
 						})
 					}

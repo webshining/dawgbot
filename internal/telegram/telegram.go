@@ -7,9 +7,6 @@ import (
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
-	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
-	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/filters/callbackquery"
-	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/filters/message"
 	"github.com/joho/godotenv"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
@@ -18,9 +15,10 @@ import (
 	"bot/internal/common/database"
 	"bot/internal/common/rabbit"
 	"bot/internal/telegram/app"
-	hndls "bot/internal/telegram/handlers"
-	"bot/internal/telegram/middlewares"
 	"bot/internal/telegram/notifier"
+	"bot/internal/telegram/notify"
+	"bot/internal/telegram/start"
+	"bot/internal/telegram/user"
 )
 
 type bot struct {
@@ -33,10 +31,7 @@ type bot struct {
 }
 
 func New() (*bot, error) {
-	// load .env file
 	godotenv.Load()
-
-	// setup new logger
 	logger, _ := zap.NewDevelopment()
 
 	// setup new database connection
@@ -61,7 +56,7 @@ func New() (*bot, error) {
 	}
 	dispatcher := ext.NewDispatcher(nil)
 
-	// set bot commands
+	// setup bot commands
 	commands := []gotgbot.BotCommand{
 		{Command: "start", Description: "Start the bot"},
 		{Command: "notify", Description: "Set channel notifications"},
@@ -71,19 +66,18 @@ func New() (*bot, error) {
 		return nil, err
 	}
 
-	// setup app context
+	// global context
 	app := app.New(b, rabbit, db, logger)
 
-	// setup bot handlers
-	middlewares := middlewares.New(app)
-	hndl := hndls.New(app)
+	// modules
+	start := start.New(app)
+	notify := notify.New(app)
+	user := user.New(app)
 
-	dispatcher.AddHandlerToGroup(handlers.NewMessage(message.Command, middlewares.UserMiddleware), -10)
-	dispatcher.AddHandlerToGroup(handlers.NewCallback(callbackquery.All, middlewares.UserMiddleware), -10)
-	dispatcher.AddHandlerToGroup(handlers.NewCommand("start", hndl.StartHandler), 10)
-	dispatcher.AddHandlerToGroup(handlers.NewCommand("notify", hndl.NotifyHandler), 10)
-	dispatcher.AddHandlerToGroup(handlers.NewCallback(callbackquery.Prefix("guild:"), hndl.NotifyGuildHandler), 10)
-	dispatcher.AddHandlerToGroup(handlers.NewCallback(callbackquery.Prefix("channel:"), hndl.NotifyChannelHandler), 10)
+	// register modules
+	registerHandler(dispatcher, 10, -10, user)
+	registerHandler(dispatcher, 10, 0, start)
+	registerHandler(dispatcher, 10, 0, notify)
 
 	// setup notifier
 	notifier, err := notifier.New(app)
@@ -119,4 +113,14 @@ func (b *bot) Run() {
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, os.Interrupt)
 	<-sc
+}
+
+type handlerModule interface {
+	Handlers(dp *ext.Dispatcher, group int)
+	Middlewares(dp *ext.Dispatcher, group int)
+}
+
+func registerHandler(dp *ext.Dispatcher, group int, middlewaresGroup int, module handlerModule) {
+	module.Middlewares(dp, middlewaresGroup)
+	module.Handlers(dp, group)
 }

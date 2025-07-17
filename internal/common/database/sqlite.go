@@ -8,7 +8,7 @@ import (
 )
 
 func New(dns string) (*gorm.DB, error) {
-	db, err := gorm.Open(sqlite.Open("database.sqlite3"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("database.sqlite3"))
 	if err != nil {
 		return nil, err
 	}
