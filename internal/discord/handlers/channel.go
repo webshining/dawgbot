@@ -12,11 +12,11 @@ func (h *handlers) ChannelAddHandler(s *discordgo.Session, c *discordgo.ChannelC
 	}
 
 	var existingChannel database.Channel
-	if err := h.db.First(&existingChannel, &database.Channel{ID: c.ID, GuildID: c.GuildID}).Error; err == nil {
+	if err := h.app.DB.First(&existingChannel, &database.Channel{ID: c.ID, GuildID: c.GuildID}).Error; err == nil {
 		return
 	}
 
-	h.db.Create(&database.Channel{ID: c.ID, Name: c.Name, GuildID: c.GuildID})
+	h.app.DB.Create(&database.Channel{ID: c.ID, Name: c.Name, GuildID: c.GuildID})
 }
 
 func (h *handlers) ChannelUpdateHandler(s *discordgo.Session, c *discordgo.ChannelUpdate) {
@@ -24,7 +24,7 @@ func (h *handlers) ChannelUpdateHandler(s *discordgo.Session, c *discordgo.Chann
 		return
 	}
 
-	h.db.Model(&database.Channel{}).Where(&database.Channel{ID: c.ID, GuildID: c.GuildID}).Update("name", c.Name)
+	h.app.DB.Model(&database.Channel{}).Where(&database.Channel{ID: c.ID, GuildID: c.GuildID}).Update("name", c.Name)
 }
 
 func (h *handlers) ChannelDeleteHandler(s *discordgo.Session, c *discordgo.ChannelDelete) {
@@ -32,5 +32,5 @@ func (h *handlers) ChannelDeleteHandler(s *discordgo.Session, c *discordgo.Chann
 		return
 	}
 
-	h.db.Unscoped().Where(&database.Channel{ID: c.ID, GuildID: c.GuildID}).Delete(&database.Channel{})
+	h.app.DB.Unscoped().Where(&database.Channel{ID: c.ID, GuildID: c.GuildID}).Delete(&database.Channel{})
 }

@@ -1,8 +1,9 @@
 package app
 
 import (
+	"bot/internal/common/broker"
+
 	"github.com/bwmarrin/discordgo"
-	amqp "github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -10,15 +11,15 @@ import (
 type AppContext struct {
 	Session *discordgo.Session
 	DB      *gorm.DB
-	Rabbit  *amqp.Connection
 	Logger  *zap.Logger
+	Broker  *broker.Broker
 }
 
-func New(session *discordgo.Session, db *gorm.DB, rabbit *amqp.Connection, logger *zap.Logger) *AppContext {
+func New(session *discordgo.Session, db *gorm.DB, broker *broker.Broker, logger *zap.Logger) *AppContext {
 	return &AppContext{
 		Session: session,
 		DB:      db,
-		Rabbit:  rabbit,
 		Logger:  logger,
+		Broker:  broker,
 	}
 }

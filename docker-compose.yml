@@ -3,7 +3,7 @@ services:
         build:
             context: .
             dockerfile: Dockerfile.telegram
-        restart: unless-stopped
+        restart: always
         networks:
             - services
             - storage
@@ -11,7 +11,7 @@ services:
         build:
             context: .
             dockerfile: Dockerfile.discord
-        restart: unless-stopped
+        restart: always
         networks:
             - services
             - storage

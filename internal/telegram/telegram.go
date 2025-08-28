@@ -8,12 +8,11 @@ import (
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
 	"github.com/joho/godotenv"
-	amqp "github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 
+	"bot/internal/common/broker"
 	"bot/internal/common/database"
-	"bot/internal/common/rabbit"
 	"bot/internal/telegram/app"
 	"bot/internal/telegram/notifier"
 	"bot/internal/telegram/notify"
@@ -25,7 +24,6 @@ type bot struct {
 	bot        *gotgbot.Bot
 	dispatcher *ext.Dispatcher
 	db         *gorm.DB
-	rabbit     *amqp.Connection
 	logger     *zap.Logger
 	notifier   *notifier.Notifier
 }
@@ -38,13 +36,6 @@ func New() (*bot, error) {
 	db, err := database.New(fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC", os.Getenv("DB_HOST"), os.Getenv("DB_USER"), os.Getenv("DB_PASS"), os.Getenv("DB_NAME"), os.Getenv("DB_PORT")))
 	if err != nil {
 		logger.Error("error connecting to database", zap.Error(err))
-		return nil, err
-	}
-
-	// setup new rabbit connection
-	rabbit, err := rabbit.New(fmt.Sprintf("amqp://%s:%s@%s:%s/", os.Getenv("RB_USER"), os.Getenv("RB_PASS"), os.Getenv("RB_HOST"), os.Getenv("RB_PORT")))
-	if err != nil {
-		logger.Error("error connecting to rabbit", zap.Error(err))
 		return nil, err
 	}
 
@@ -66,8 +57,11 @@ func New() (*bot, error) {
 		return nil, err
 	}
 
+	// setup broker
+	broker := broker.New("dawg-telegram", logger)
+
 	// global context
-	app := app.New(b, rabbit, db, logger)
+	app := app.New(b, db, broker, logger)
 
 	// modules
 	start := start.New(app)
@@ -80,17 +74,12 @@ func New() (*bot, error) {
 	registerHandler(dispatcher, 10, 0, notify)
 
 	// setup notifier
-	notifier, err := notifier.New(app)
-	if err != nil {
-		logger.Error("failed to create notifier", zap.Error(err))
-		return nil, err
-	}
+	notifier := notifier.New(app)
 
 	return &bot{
 		bot:        b,
 		dispatcher: dispatcher,
 		db:         db,
-		rabbit:     rabbit,
 		logger:     logger,
 		notifier:   notifier,
 	}, nil
@@ -103,11 +92,7 @@ func (b *bot) Run() {
 		return
 	}
 
-	go func() {
-		if err := b.notifier.Start(); err != nil {
-			b.logger.Error("failed to start notifier", zap.Error(err))
-		}
-	}()
+	b.notifier.Start()
 
 	b.logger.Info("Bot is now running. Press CTRL+C to exit.")
 	sc := make(chan os.Signal, 1)

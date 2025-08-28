@@ -5,21 +5,19 @@ import (
 	"os"
 	"os/signal"
 
+	"bot/internal/common/broker"
 	"bot/internal/common/database"
-	"bot/internal/common/rabbit"
 	"bot/internal/discord/app"
 	"bot/internal/discord/commands"
 	"bot/internal/discord/handlers"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
-	amqp "github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
 )
 
 type Bot struct {
 	session  *discordgo.Session
-	rabbit   *amqp.Connection
 	logger   *zap.Logger
 	commands []*discordgo.ApplicationCommand
 }
@@ -38,13 +36,6 @@ func New() (*Bot, error) {
 		return nil, err
 	}
 
-	// setup new rabbit connection
-	rabbit, err := rabbit.New(fmt.Sprintf("amqp://%s:%s@%s:%s/", os.Getenv("RB_USER"), os.Getenv("RB_PASS"), os.Getenv("RB_HOST"), os.Getenv("RB_PORT")))
-	if err != nil {
-		logger.Error("error connecting to rabbit", zap.Error(err))
-		return nil, err
-	}
-
 	// setup new bot session
 	bot, err := discordgo.New("Bot " + os.Getenv("DISCORD_BOT_TOKEN"))
 	if err != nil {
@@ -52,8 +43,11 @@ func New() (*Bot, error) {
 		return nil, err
 	}
 
+	// setup broker
+	broker := broker.New("dawg-discord", logger)
+
 	// setup app context
-	app := app.New(bot, db, rabbit, logger)
+	app := app.New(bot, db, broker, logger)
 
 	// set bot properties
 	bot.Identify.Intents = discordgo.IntentsGuildVoiceStates | discordgo.IntentsGuilds
@@ -63,18 +57,13 @@ func New() (*Bot, error) {
 	bot.AddHandler(commands.Handler)
 
 	// register handlers
-	handlers, err := handlers.New(app, commands.Commands)
-	if err != nil {
-		logger.Error("error creating handlers", zap.Error(err))
-		return nil, err
-	}
+	handlers := handlers.New(app, commands.Commands)
 	for _, handler := range handlers.Handlers() {
 		bot.AddHandler(handler)
 	}
 
 	return &Bot{
 		session:  app.Session,
-		rabbit:   app.Rabbit,
 		logger:   app.Logger,
 		commands: commands.Commands,
 	}, nil
@@ -82,7 +71,6 @@ func New() (*Bot, error) {
 
 func (b *Bot) Run() {
 	defer b.session.Close()
-	defer b.rabbit.Close()
 	defer b.logger.Sync()
 
 	if err := b.session.Open(); err != nil {

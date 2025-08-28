@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
 )
 
@@ -14,12 +13,10 @@ type Message struct {
 }
 
 type VoiceJoinMessage struct {
-	Username    string `json:"username"`
-	Channel     string `json:"channel"`
-	ChannelName string `json:"channel_name"`
-	Guild       string `json:"guild"`
-	GuildName   string `json:"guild_name"`
-	Image       string `json:"image"`
+	Username string `json:"username"`
+	Channel  string `json:"channel"`
+	Guild    string `json:"guild"`
+	Image    string `json:"image"`
 }
 
 func (h *handlers) VoiceJoinHandler(s *discordgo.Session, vs *discordgo.VoiceStateUpdate) {
@@ -50,32 +47,18 @@ func (h *handlers) VoiceJoinHandler(s *discordgo.Session, vs *discordgo.VoiceSta
 		}
 	}
 
-	data, _ := json.Marshal(VoiceJoinMessage{
-		Username:    user.DisplayName(),
-		Channel:     channel.ID,
-		ChannelName: channel.Name,
-		Guild:       guild.ID,
-		GuildName:   guild.Name,
-		Image:       guild.IconURL("1024"),
+	message, err := json.Marshal(VoiceJoinMessage{
+		Username: user.DisplayName(),
+		Channel:  channel.ID,
+		Guild:    guild.ID,
+		Image:    guild.IconURL("1024"),
 	})
-	message := Message{
-		Message: "voice_join",
-		Data:    data,
-	}
-
-	messageJSON, err := json.Marshal(message)
 	if err != nil {
-		h.logger.Error("failed to marshal message", zap.Error(err))
+		h.app.Logger.Error("failed to marshal message", zap.Error(err))
 		return
 	}
 
-	err = h.rabbit.Publish("", "voice", false, false,
-		amqp091.Publishing{
-			ContentType: "application/json",
-			Body:        messageJSON,
-		},
-	)
-	if err != nil {
-		h.logger.Error("failed to publish message", zap.Error(err))
+	if token := h.app.Broker.Publish("voice", message); token.Wait() && token.Error() != nil {
+		h.app.Logger.Error("failed to publish message", zap.Error(token.Error()))
 	}
 }

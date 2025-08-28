@@ -8,7 +8,7 @@ import (
 
 func (h *handlers) GuildAddHandler(s *discordgo.Session, g *discordgo.GuildCreate) {
 	var existingGuild database.Guild
-	if err := h.db.First(&existingGuild, &database.Guild{ID: g.ID}).Error; err == nil {
+	if err := h.app.DB.First(&existingGuild, &database.Guild{ID: g.ID}).Error; err == nil {
 		return
 	}
 
@@ -20,13 +20,13 @@ func (h *handlers) GuildAddHandler(s *discordgo.Session, g *discordgo.GuildCreat
 		}
 	}
 
-	h.db.Create(&guild)
+	h.app.DB.Create(&guild)
 }
 
 func (h *handlers) GuildUpdateHandler(s *discordgo.Session, g *discordgo.GuildUpdate) {
-	h.db.Model(&database.Guild{}).Where(&database.Guild{ID: g.ID}).Update("name", g.Name)
+	h.app.DB.Model(&database.Guild{}).Where(&database.Guild{ID: g.ID}).Update("name", g.Name)
 }
 
 func (h *handlers) GuildDeleteHandler(s *discordgo.Session, g *discordgo.GuildDelete) {
-	h.db.Unscoped().Where(&database.Guild{ID: g.ID}).Delete(&database.Guild{})
+	h.app.DB.Unscoped().Where(&database.Guild{ID: g.ID}).Delete(&database.Guild{})
 }

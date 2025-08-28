@@ -8,98 +8,58 @@ import (
 	"html"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
-	amqp "github.com/rabbitmq/amqp091-go"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 )
 
 type Notifier struct {
-	rabbit *amqp.Channel
-	bot    *gotgbot.Bot
-	db     *gorm.DB
-	logger *zap.Logger
-}
-
-type Message struct {
-	Message string `json:"message"`
-	Data    []byte `json:"data"`
+	app *app.AppContext
 }
 
 type VoiceJoinMessage struct {
-	Username    string `json:"username"`
-	Channel     string `json:"channel"`
-	ChannelName string `json:"channel_name"`
-	Guild       string `json:"guild"`
-	GuildName   string `json:"guild_name"`
-	Image       string `json:"image"`
+	Username string `json:"username"`
+	Channel  string `json:"channel"`
+	Guild    string `json:"guild"`
+	Image    string `json:"image"`
 }
 
-func New(app *app.AppContext) (*Notifier, error) {
-	rabbitChannel, err := app.Rabbit.Channel()
-	if err != nil {
-		return nil, err
-	}
-	if _, err = rabbitChannel.QueueDeclare("voice", true, false, false, false, nil); err != nil {
-		return nil, err
-	}
-	return &Notifier{
-		rabbit: rabbitChannel,
-		bot:    app.Bot,
-		db:     app.DB,
-		logger: app.Logger,
-	}, nil
+func New(app *app.AppContext) *Notifier {
+	return &Notifier{app}
 }
 
-func (n *Notifier) Start() error {
-	msgs, err := n.rabbit.Consume(
-		"voice",
-		"",
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		return err
-	}
+func (n *Notifier) handleMessage(client mqtt.Client, msg mqtt.Message) {
+	var data VoiceJoinMessage
+	json.Unmarshal(msg.Payload(), &data)
 
-	go func() {
-		for d := range msgs {
-			var msg Message
-			if err := json.Unmarshal(d.Body, &msg); err != nil {
-				n.logger.Error("Failed to unmarshal message", zap.Error(err))
-				continue
-			}
-			if msg.Message == "voice_join" {
-				var data VoiceJoinMessage
-				json.Unmarshal(msg.Data, &data)
-
-				var channel *database.Channel
-				n.db.Preload("Users").First(&channel, data.Channel)
-				for _, user := range channel.Users {
-					text := fmt.Sprintf("<code>[</code> <b>%s</b> <code>]</code> — <code>[</code> <b>%s</b> <code>]</code> — <code>[</code> <b>%s</b> <code>]</code>",
-						html.EscapeString(data.GuildName),
-						html.EscapeString(data.ChannelName),
-						html.EscapeString(data.Username),
-					)
-					if user.LastGuildID != data.Guild {
-						user.LastGuildID = data.Guild
-						n.db.Save(&user)
-						n.bot.SendPhoto(user.ID, gotgbot.InputFileByURL(data.Image), &gotgbot.SendPhotoOpts{
-							Caption:   text,
-							ParseMode: "HTML",
-						})
-					} else {
-						n.bot.SendMessage(user.ID, text, &gotgbot.SendMessageOpts{
-							ParseMode: "HTML",
-						})
-					}
-				}
-			}
+	var channel *database.Channel
+	var guild *database.Guild
+	n.app.DB.Preload("Users").First(&channel, data.Channel)
+	n.app.DB.First(&guild, data.Guild)
+	for _, user := range channel.Users {
+		text := fmt.Sprintf("<code>[</code> <b>%s</b> <code>]</code> — <code>[</code> <b>%s</b> <code>]</code> — <code>[</code> <b>%s</b> <code>]</code>",
+			html.EscapeString(guild.Name),
+			html.EscapeString(channel.Name),
+			html.EscapeString(data.Username),
+		)
+		if user.LastGuildID != guild.ID {
+			user.LastGuildID = data.Guild
+			n.app.DB.Save(&user)
+			n.app.Bot.SendPhoto(user.ID, gotgbot.InputFileByURL(data.Image), &gotgbot.SendPhotoOpts{
+				Caption:   text,
+				ParseMode: "HTML",
+			})
+		} else {
+			n.app.Bot.SendMessage(user.ID, text, &gotgbot.SendMessageOpts{
+				ParseMode: "HTML",
+			})
 		}
-	}()
+	}
+}
 
-	n.logger.Info("Notifier started")
-	return nil
+func (n *Notifier) Start() {
+	if token := n.app.Broker.Subscribe("voice", n.handleMessage); token.Wait() && token.Error() != nil {
+		n.app.Logger.Error("failed to recieve message", zap.Error(token.Error()))
+	}
+
+	n.app.Logger.Info("Notifier started")
 }
