@@ -76,6 +76,4 @@ func (b *Bot) Run() {
 	b.session.ApplicationCommandBulkOverwrite(b.session.State.User.ID, "", b.commands)
 
 	b.logger.Info("Bot is now running")
-	for {
-	}
 }

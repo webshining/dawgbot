@@ -82,7 +82,6 @@ func (b *bot) Run() {
 	}
 
 	b.logger.Info("Bot is now running")
-	updater.Idle()
 }
 
 type handlerModule interface {

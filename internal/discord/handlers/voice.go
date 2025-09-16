@@ -47,7 +47,7 @@ func (h *handlers) VoiceJoinHandler(s *discordgo.Session, vs *discordgo.VoiceSta
 		}
 	}
 
-	message, err := json.Marshal(VoiceJoinMessage{
+	_, err = json.Marshal(VoiceJoinMessage{
 		Username: user.DisplayName(),
 		Channel:  channel.ID,
 		Guild:    guild.ID,
@@ -56,9 +56,5 @@ func (h *handlers) VoiceJoinHandler(s *discordgo.Session, vs *discordgo.VoiceSta
 	if err != nil {
 		h.app.Logger.Error("failed to marshal message", zap.Error(err))
 		return
-	}
-
-	if token := h.app.Broker.Publish("voice", message); token.Wait() && token.Error() != nil {
-		h.app.Logger.Error("failed to publish message", zap.Error(token.Error()))
 	}
 }
