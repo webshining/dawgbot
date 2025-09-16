@@ -3,7 +3,6 @@ package telegram
 import (
 	"fmt"
 	"os"
-	"os/signal"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
@@ -11,10 +10,8 @@ import (
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 
-	"bot/internal/common/broker"
 	"bot/internal/common/database"
 	"bot/internal/telegram/app"
-	"bot/internal/telegram/notifier"
 	"bot/internal/telegram/notify"
 	"bot/internal/telegram/start"
 	"bot/internal/telegram/user"
@@ -25,7 +22,6 @@ type bot struct {
 	dispatcher *ext.Dispatcher
 	db         *gorm.DB
 	logger     *zap.Logger
-	notifier   *notifier.Notifier
 }
 
 func New() (*bot, error) {
@@ -57,11 +53,8 @@ func New() (*bot, error) {
 		return nil, err
 	}
 
-	// setup broker
-	broker := broker.New("dawg-telegram", logger)
-
 	// global context
-	app := app.New(b, db, broker, logger)
+	app := app.New(b, db, logger)
 
 	// modules
 	start := start.New(app)
@@ -73,15 +66,11 @@ func New() (*bot, error) {
 	registerHandler(dispatcher, 10, 0, start)
 	registerHandler(dispatcher, 10, 0, notify)
 
-	// setup notifier
-	notifier := notifier.New(app)
-
 	return &bot{
 		bot:        b,
 		dispatcher: dispatcher,
 		db:         db,
 		logger:     logger,
-		notifier:   notifier,
 	}, nil
 }
 
@@ -92,12 +81,8 @@ func (b *bot) Run() {
 		return
 	}
 
-	b.notifier.Start()
-
-	b.logger.Info("Bot is now running. Press CTRL+C to exit.")
-	sc := make(chan os.Signal, 1)
-	signal.Notify(sc, os.Interrupt)
-	<-sc
+	b.logger.Info("Bot is now running")
+	updater.Idle()
 }
 
 type handlerModule interface {

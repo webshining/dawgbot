@@ -3,9 +3,7 @@ package discord
 import (
 	"fmt"
 	"os"
-	"os/signal"
 
-	"bot/internal/common/broker"
 	"bot/internal/common/database"
 	"bot/internal/discord/app"
 	"bot/internal/discord/commands"
@@ -43,11 +41,8 @@ func New() (*Bot, error) {
 		return nil, err
 	}
 
-	// setup broker
-	broker := broker.New("dawg-discord", logger)
-
 	// setup app context
-	app := app.New(bot, db, broker, logger)
+	app := app.New(bot, db, logger)
 
 	// set bot properties
 	bot.Identify.Intents = discordgo.IntentsGuildVoiceStates | discordgo.IntentsGuilds
@@ -80,8 +75,7 @@ func (b *Bot) Run() {
 
 	b.session.ApplicationCommandBulkOverwrite(b.session.State.User.ID, "", b.commands)
 
-	b.logger.Info("Bot is now running. Press CTRL+C to exit.")
-	sc := make(chan os.Signal, 1)
-	signal.Notify(sc, os.Interrupt)
-	<-sc
+	b.logger.Info("Bot is now running")
+	for {
+	}
 }
