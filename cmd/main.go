@@ -6,15 +6,9 @@ import (
 )
 
 func main() {
-	telegramBot, err := telegram.New()
-	if err != nil {
-		panic(err)
-	}
+	telegramBot := telegram.New()
 
-	discordBot, err := discord.New()
-	if err != nil {
-		panic(err)
-	}
+	discordBot := discord.New(telegramBot.Bot)
 
 	go telegramBot.Run()
 	go discordBot.Run()

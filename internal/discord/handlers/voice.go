@@ -1,23 +1,13 @@
 package handlers
 
 import (
-	"encoding/json"
+	"bot/internal/common/database"
+	"fmt"
+	"html"
 
+	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/bwmarrin/discordgo"
-	"go.uber.org/zap"
 )
-
-type Message struct {
-	Message string `json:"message"`
-	Data    []byte `json:"data"`
-}
-
-type VoiceJoinMessage struct {
-	Username string `json:"username"`
-	Channel  string `json:"channel"`
-	Guild    string `json:"guild"`
-	Image    string `json:"image"`
-}
 
 func (h *handlers) VoiceJoinHandler(s *discordgo.Session, vs *discordgo.VoiceStateUpdate) {
 	if vs.ChannelID == "" {
@@ -31,7 +21,6 @@ func (h *handlers) VoiceJoinHandler(s *discordgo.Session, vs *discordgo.VoiceSta
 	if err != nil {
 		return
 	}
-
 	channel, err := s.State.Channel(vs.ChannelID)
 	if err != nil {
 		channel, err = s.Channel(vs.ChannelID)
@@ -47,14 +36,26 @@ func (h *handlers) VoiceJoinHandler(s *discordgo.Session, vs *discordgo.VoiceSta
 		}
 	}
 
-	_, err = json.Marshal(VoiceJoinMessage{
-		Username: user.DisplayName(),
-		Channel:  channel.ID,
-		Guild:    guild.ID,
-		Image:    guild.IconURL("1024"),
-	})
-	if err != nil {
-		h.app.Logger.Error("failed to marshal message", zap.Error(err))
-		return
+	var channelDB *database.Channel
+	h.app.DB.Preload("Users").First(&channelDB, vs.ChannelID)
+
+	for _, userDB := range channelDB.Users {
+		text := fmt.Sprintf("<code>[</code> <b>%s</b> <code>]</code> — <code>[</code> <b>%s</b> <code>]</code> — <code>[</code> <b>%s</b> <code>]</code>",
+			html.EscapeString(guild.Name),
+			html.EscapeString(channel.Name),
+			html.EscapeString(user.DisplayName()),
+		)
+		if userDB.LastGuildID != guild.ID {
+			userDB.LastGuildID = guild.ID
+			h.app.DB.Save(&userDB)
+			h.app.TelegramBot.SendPhoto(userDB.ID, gotgbot.InputFileByURL(guild.IconURL("1024")), &gotgbot.SendPhotoOpts{
+				Caption:   text,
+				ParseMode: "HTML",
+			})
+		} else {
+			h.app.TelegramBot.SendMessage(userDB.ID, text, &gotgbot.SendMessageOpts{
+				ParseMode: "HTML",
+			})
+		}
 	}
 }
