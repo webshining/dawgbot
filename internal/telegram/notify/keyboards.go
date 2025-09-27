@@ -3,7 +3,7 @@ package notify
 import (
 	"fmt"
 
-	"bot/internal/common/database"
+	"bot/internal/database"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
 )

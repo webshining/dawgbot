@@ -5,9 +5,6 @@ import (
 )
 
 func main() {
-	bot, err := discord.New()
-	if err != nil {
-		panic(err)
-	}
+	bot := discord.New()
 	bot.Run()
 }

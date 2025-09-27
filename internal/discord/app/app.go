@@ -1,7 +1,7 @@
 package app
 
 import (
-	"bot/internal/common/broker"
+	"bot/internal/broker"
 
 	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"

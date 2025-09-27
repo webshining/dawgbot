@@ -1,7 +1,7 @@
 package notifier
 
 import (
-	"bot/internal/common/database"
+	"bot/internal/database"
 	"bot/internal/telegram/app"
 	"encoding/json"
 	"fmt"

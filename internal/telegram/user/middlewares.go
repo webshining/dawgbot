@@ -1,7 +1,7 @@
 package user
 
 import (
-	"bot/internal/common/database"
+	"bot/internal/database"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"

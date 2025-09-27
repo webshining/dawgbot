@@ -1,7 +1,7 @@
 package notify
 
 import (
-	"bot/internal/common/database"
+	"bot/internal/database"
 	"fmt"
 	"strings"
 

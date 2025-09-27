@@ -1,18 +1,17 @@
 package telegram
 
 import (
-	"fmt"
 	"os"
 	"os/signal"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
-	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 
-	"bot/internal/common/broker"
-	"bot/internal/common/database"
+	"bot/internal/broker"
+	"bot/internal/config"
+	"bot/internal/database"
 	"bot/internal/telegram/app"
 	"bot/internal/telegram/notifier"
 	"bot/internal/telegram/notify"
@@ -28,22 +27,16 @@ type bot struct {
 	notifier   *notifier.Notifier
 }
 
-func New() (*bot, error) {
-	godotenv.Load()
+func New() *bot {
 	logger, _ := zap.NewDevelopment()
-
-	// setup new database connection
-	db, err := database.New(fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC", os.Getenv("DB_HOST"), os.Getenv("DB_USER"), os.Getenv("DB_PASS"), os.Getenv("DB_NAME"), os.Getenv("DB_PORT")))
-	if err != nil {
-		logger.Error("error connecting to database", zap.Error(err))
-		return nil, err
-	}
+	config := config.MustLoad(logger)
+	db := database.MustConnect(config.Database, logger)
+	broker := broker.MustConnect("dawg-telegram", config.Broker, logger)
 
 	// setup new bot session
-	b, err := gotgbot.NewBot(os.Getenv("TELEGRAM_BOT_TOKEN"), nil)
+	b, err := gotgbot.NewBot(config.Telegram.Token, nil)
 	if err != nil {
-		logger.Error("failed to create new bot:", zap.Error(err))
-		return nil, err
+		logger.Fatal("failed to create new bot:", zap.Error(err))
 	}
 	dispatcher := ext.NewDispatcher(nil)
 
@@ -53,12 +46,8 @@ func New() (*bot, error) {
 		{Command: "notify", Description: "Set channel notifications"},
 	}
 	if _, err := b.SetMyCommands(commands, nil); err != nil {
-		logger.Error("failed to set bot commands", zap.Error(err))
-		return nil, err
+		logger.Fatal("failed to set bot commands", zap.Error(err))
 	}
-
-	// setup broker
-	broker := broker.New("dawg-telegram", logger)
 
 	// global context
 	app := app.New(b, db, broker, logger)
@@ -82,14 +71,13 @@ func New() (*bot, error) {
 		db:         db,
 		logger:     logger,
 		notifier:   notifier,
-	}, nil
+	}
 }
 
 func (b *bot) Run() {
 	updater := ext.NewUpdater(b.dispatcher, nil)
 	if err := updater.StartPolling(b.bot, nil); err != nil {
-		b.logger.Error("failed to start polling", zap.Error(err))
-		return
+		b.logger.Fatal("failed to start polling", zap.Error(err))
 	}
 
 	b.notifier.Start()
