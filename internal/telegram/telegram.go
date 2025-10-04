@@ -1,9 +1,6 @@
 package telegram
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
 	hndls "github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
@@ -12,7 +9,8 @@ import (
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 
-	"bot/internal/common/database"
+	"bot/internal/config"
+	"bot/internal/database"
 	"bot/internal/telegram/handlers"
 	"bot/internal/telegram/middlewares"
 )
@@ -26,15 +24,13 @@ type bot struct {
 func New() *bot {
 	godotenv.Load()
 	logger, _ := zap.NewDevelopment()
+	config := config.MustLoad(logger)
 
 	// setup new database connection
-	db, err := database.New(fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC", os.Getenv("DB_HOST"), os.Getenv("DB_USER"), os.Getenv("DB_PASS"), os.Getenv("DB_NAME"), os.Getenv("DB_PORT")))
-	if err != nil {
-		logger.Fatal("error connecting to database", zap.Error(err))
-	}
+	db := database.MustConnect(config.Database, logger)
 
 	// setup new bot session
-	b, err := gotgbot.NewBot(os.Getenv("TELEGRAM_BOT_TOKEN"), nil)
+	b, err := gotgbot.NewBot(config.Telegram.Token, nil)
 	if err != nil {
 		logger.Fatal("failed to create new bot:", zap.Error(err))
 	}

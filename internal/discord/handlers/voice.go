@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"bot/internal/common/database"
+	"bot/internal/database"
 	"fmt"
 	"html"
 

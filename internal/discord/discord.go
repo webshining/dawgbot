@@ -1,10 +1,8 @@
 package discord
 
 import (
-	"fmt"
-	"os"
-
-	"bot/internal/common/database"
+	"bot/internal/config"
+	"bot/internal/database"
 	"bot/internal/discord/app"
 	"bot/internal/discord/commands"
 	"bot/internal/discord/handlers"
@@ -24,18 +22,14 @@ type bot struct {
 func New(telegramBot *gotgbot.Bot) *bot {
 	// load .env file
 	godotenv.Load()
-
-	// setup new logger
 	logger, _ := zap.NewDevelopment()
+	config := config.MustLoad(logger)
 
 	// setup new database connection
-	db, err := database.New(fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC", os.Getenv("DB_HOST"), os.Getenv("DB_USER"), os.Getenv("DB_PASS"), os.Getenv("DB_NAME"), os.Getenv("DB_PORT")))
-	if err != nil {
-		logger.Fatal("error connecting to database", zap.Error(err))
-	}
+	db := database.MustConnect(config.Database, logger)
 
 	// setup new bot session
-	b, err := discordgo.New("Bot " + os.Getenv("DISCORD_BOT_TOKEN"))
+	b, err := discordgo.New("Bot " + config.Discord.Token)
 	if err != nil {
 		logger.Fatal("error creating bot session", zap.Error(err))
 	}

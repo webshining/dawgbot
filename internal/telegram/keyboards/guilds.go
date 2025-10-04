@@ -1,7 +1,7 @@
 package keyboards
 
 import (
-	"bot/internal/common/database"
+	"bot/internal/database"
 	"fmt"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
