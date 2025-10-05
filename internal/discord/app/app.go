@@ -7,14 +7,19 @@ import (
 	"gorm.io/gorm"
 )
 
+type TelegramBot interface {
+	SendPhoto(chatId int64, photo gotgbot.InputFileOrString, opts *gotgbot.SendPhotoOpts)
+	SendMessage(chatId int64, text string, opts *gotgbot.SendMessageOpts)
+}
+
 type AppContext struct {
 	Session     *discordgo.Session
 	DB          *gorm.DB
-	TelegramBot *gotgbot.Bot
+	TelegramBot TelegramBot
 	Logger      *zap.Logger
 }
 
-func New(session *discordgo.Session, db *gorm.DB, telegramBot *gotgbot.Bot, logger *zap.Logger) *AppContext {
+func New(session *discordgo.Session, db *gorm.DB, telegramBot TelegramBot, logger *zap.Logger) *AppContext {
 	return &AppContext{
 		Session:     session,
 		DB:          db,

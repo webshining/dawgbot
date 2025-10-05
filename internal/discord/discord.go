@@ -2,15 +2,14 @@ package discord
 
 import (
 	"bot/internal/config"
-	"bot/internal/database"
 	"bot/internal/discord/app"
 	"bot/internal/discord/commands"
 	"bot/internal/discord/handlers"
+	"context"
 
-	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/bwmarrin/discordgo"
-	"github.com/joho/godotenv"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 type bot struct {
@@ -19,23 +18,15 @@ type bot struct {
 	commands []*discordgo.ApplicationCommand
 }
 
-func New(telegramBot *gotgbot.Bot) *bot {
-	// load .env file
-	godotenv.Load()
-	logger, _ := zap.NewDevelopment()
-	config := config.MustLoad(logger)
-
-	// setup new database connection
-	db := database.MustConnect(config.Database, logger)
-
+func New(config *config.DiscordConfig, database *gorm.DB, telegramBot app.TelegramBot, logger *zap.Logger) *bot {
 	// setup new bot session
-	b, err := discordgo.New("Bot " + config.Discord.Token)
+	b, err := discordgo.New("Bot " + config.Token)
 	if err != nil {
 		logger.Fatal("error creating bot session", zap.Error(err))
 	}
 
 	// setup app context
-	app := app.New(b, db, telegramBot, logger)
+	app := app.New(b, database, telegramBot, logger)
 
 	// set bot properties
 	b.Identify.Intents = discordgo.IntentsGuildVoiceStates | discordgo.IntentsGuilds
@@ -57,7 +48,7 @@ func New(telegramBot *gotgbot.Bot) *bot {
 	}
 }
 
-func (b *bot) Run() {
+func (b *bot) Run(ctx context.Context) {
 	if err := b.session.Open(); err != nil {
 		b.logger.Error("error opening connection to Discord", zap.Error(err))
 		return
@@ -66,4 +57,7 @@ func (b *bot) Run() {
 	b.session.ApplicationCommandBulkOverwrite(b.session.State.User.ID, "", b.commands)
 
 	b.logger.Info("Bot is now running")
+	defer b.logger.Info("Bot is shuted down")
+
+	<-ctx.Done()
 }

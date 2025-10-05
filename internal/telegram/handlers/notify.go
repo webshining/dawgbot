@@ -3,7 +3,6 @@ package handlers
 import (
 	"bot/internal/database"
 	"bot/internal/telegram/keyboards"
-	"fmt"
 	"strings"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
@@ -75,8 +74,6 @@ func (h *handlers) NotifyChannel(b *gotgbot.Bot, ctx *ext.Context) error {
 		h.db.Model(&user).Association("Channels").Append(&channel)
 		userChannels = append(userChannels, channel)
 	}
-
-	fmt.Printf("%#v", guildChannels)
 
 	b.EditMessageReplyMarkup(&gotgbot.EditMessageReplyMarkupOpts{
 		ChatId:      ctx.EffectiveChat.Id,
